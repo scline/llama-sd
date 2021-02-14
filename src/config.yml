@@ -1,0 +1,15 @@
+### Web Server Settings ###
+
+# Port webserver listens on
+port: 8080
+
+# Server IP to listen for web traffic, 0.0.0.0 is all available IP's
+host: 0.0.0.0
+
+# How long before service discovery removes an enpoint that has not
+# checked in. This value is in seconds and is set by default to the 
+# value listed below. Probe settings will overwrite this values.
+keepalive: 86400
+
+# Debug logging level, True or False
+verbose: True
