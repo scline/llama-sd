@@ -120,7 +120,7 @@ def create_date():
 # Background process that removes stale entries
 def clean_stale_probes():
     # Run every 60 seconds
-    while(not sleep(5)):
+    while(not sleep(60)):
         # Aquire thread lock for variable work
         with thread_lock:
             
