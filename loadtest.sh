@@ -4,9 +4,7 @@ while true
 do
 curl -H 'Content-Type: application/json' -X POST \
     -d '{
-	"id": "'"$i"'",
-	"address": "192.168.0.1",
-	"port": 8100,
+	"port": '$i',
 	"keepalive": 120,
 	"group": "testing",
 	"meta": {

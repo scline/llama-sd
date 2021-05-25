@@ -54,7 +54,6 @@ schema = {
     'type': 'object',
     'properties': {
         'id': {'type': 'string'},
-        'address': {'type': 'string'},
         'port': {'type': 'number'},
         'keepalive': {'type': 'number', "default": default_keepalive },
         'meta': {
@@ -65,7 +64,7 @@ schema = {
             'required': ['version']
         },
     },
-    'required': ['id', 'address', 'port']
+    'required': ['port']
 }
 
 
@@ -85,6 +84,12 @@ def get_metrics():
     return "Metrics page for prometheus in the future"
 
 
+# Returns IP address of requester, for finding NAT/Public address in the future
+@app.route("/api/v1/my_ip_address", methods=['GET'])
+def my_ip_address():
+    return jsonify({'ip': request.remote_addr}), 200
+
+
 # Registration endpoint
 @app.route("/api/v1/register", methods=['POST'])
 @expects_json(schema, fill_defaults=True)
@@ -93,6 +98,12 @@ def add_entry():
 
     # Add create date to the json data
     request_json.update(create_date())
+
+    # Add requestor IP address to the json data
+    request_json.update({'address': '%s' % request.remote_addr})
+
+    # Formulate probe ID by "Address:Port", ex: "192.168.1.12:8100"
+    request_json.update({'id': '%s:%s' % (request.remote_addr, request_json['port'])})
 
     logging.debug("Registration Update: '%s'" % request_json['id'])
 
