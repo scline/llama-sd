@@ -14,8 +14,9 @@ COPY src/ .
 ENV \
     APP_PORT=80 \
     APP_HOST=0.0.0.0 \
-    APP_VERBOSE=False \
-    APP_KEEPALIVE=86400
+    APP_VERBOSE=True \
+    APP_KEEPALIVE=86400 \
+    PYTHONUNBUFFERED=0
 
 # Expose webport
 EXPOSE 80

@@ -53,6 +53,7 @@ metrics = {}
 schema = {
     'type': 'object',
     'properties': {
+        'id': {'type': 'string'},
         'address': {'type': 'string'},
         'port': {'type': 'number'},
         'keepalive': {'type': 'number', "default": default_keepalive },
@@ -93,8 +94,14 @@ def add_entry():
     # Add create date to the json data
     request_json.update(create_date())
 
+    logging.debug("Registration Update: '%s'" % request_json['id'])
+
+    # Wait for thread lock in the event cleanup is running
+    thread_lock.acquire()
     # Turn "id" into a key to organize hosts, incert to database variable
     database[request_json['id']] = request_json
+    # Release thread lock
+    thread_lock.release()
 
     return database
 
@@ -112,11 +119,11 @@ def create_date():
 
 # Background process that removes stale entries
 def clean_stale_probes():
-    global thread_lock
     # Run every 60 seconds
-    while(not sleep(60)):
+    while(not sleep(5)):
         # Aquire thread lock for variable work
         with thread_lock:
+            
             logging.debug("Thread Locked!")
             logging.debug("%i probe entries are registered" % len(database))
 
