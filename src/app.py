@@ -1,4 +1,4 @@
-import flask, threading, logging, configargparse
+import sys, flask, threading, logging, configargparse
 
 from flask import request, jsonify
 from flask_expects_json import expects_json
@@ -53,7 +53,6 @@ metrics = {}
 schema = {
     'type': 'object',
     'properties': {
-        'id': {'type': 'string'},
         'port': {'type': 'number'},
         'keepalive': {'type': 'number', "default": default_keepalive },
         'meta': {
@@ -81,7 +80,7 @@ def get_metrics():
     # Database Size
     # Uptime
     # Memory Usage (is that easy?)
-    return "Metrics page for prometheus in the future"
+    return jsonify(metrics), 200
 
 
 # Returns IP address of requester, for finding NAT/Public address in the future
@@ -120,7 +119,7 @@ def add_entry():
 # A route to return all of the available entries
 @app.route('/api/v1/list', methods=['GET'])
 def api_list_all():
-    return jsonify(database)
+    return jsonify(database), 200
 
 
 # Grab current date and time, reply in json format
@@ -132,6 +131,9 @@ def create_date():
 def clean_stale_probes():
     # Run every 60 seconds
     while(not sleep(60)):
+        # Get start time for runtime metrics
+        start_time = datetime.now().timestamp()
+
         # Aquire thread lock for variable work
         with thread_lock:
             
@@ -159,10 +161,19 @@ def clean_stale_probes():
             if remove_probe_list:
                 logging.warning("Removed %i probe(s) due to aging - %s" % (len(remove_probe_list), str(remove_probe_list)))
 
+            # Lets collect and crunch some metrics here
+            global metrics
+            metrics["probe_removed"] = len(remove_probe_list)
+            metrics["probe_count"] = len(database)
+            metrics["database_size_bytes"] = sys.getsizeof(database)
+            metrics["clean_runtime"] = datetime.now().timestamp() - start_time
+            metrics["uptime"] = datetime.now().timestamp() - metrics["start_time"].timestamp()
+            metrics["metrics_timestamp"] = datetime.now()
+
         logging.debug("Thread Unlocked!")
 
 # Gather application start time for metrics and data validation
-metrics = { "start_time",  datetime.now() }
+metrics["start_time"] = datetime.now()
 
 # Start background threaded process to clean stale probes
 inline_thread_cleanup = threading.Thread(target=clean_stale_probes, name="CleanThread")
