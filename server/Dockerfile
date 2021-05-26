@@ -14,7 +14,7 @@ COPY src/ .
 ENV \
     APP_PORT=80 \
     APP_HOST=0.0.0.0 \
-    APP_VERBOSE=True \
+    APP_VERBOSE=False \
     APP_GROUP="none" \
     APP_KEEPALIVE=86400 \
     PYTHONUNBUFFERED=0

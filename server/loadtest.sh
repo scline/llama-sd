@@ -5,7 +5,7 @@ do
 curl -H 'Content-Type: application/json' -X POST \
     -d '{
 	"port": '$i',
-	"keepalive": 600,
+	"keepalive": 90,
 	"group": "testing",
 	"meta": {
 		"version": "1.1",

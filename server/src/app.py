@@ -1,8 +1,9 @@
-import sys, flask, threading, logging, configargparse
+import flask, threading, logging, configargparse
 
 from flask import request, jsonify
 from flask_expects_json import expects_json
 from datetime import datetime
+from pympler import asizeof
 from time import sleep
 
 # Load configuration file and settings
@@ -49,6 +50,7 @@ else:
 logging.debug(p.format_values())
 logging.debug(config)
 logging.debug("Default keepalive is set to %i seconds" % default_keepalive)
+logging.debug("Default group is set to '%s'" % default_group)
 
 # Global variable to lock threads as needed
 thread_lock = threading.Lock()
@@ -81,14 +83,9 @@ def home():
     return "<h1>Welcome Home!</h1><p>Generic HomePage</p>"
 
 
-# TODO: Prometheus metrics and stats go here
+# TODO: Prometheus or JSON metrics and stats go here
 @app.route('/metrics', methods=['GET'])
 def get_metrics():
-    # Registration Count
-    # Registration Deletes
-    # Database Size
-    # Uptime
-    # Memory Usage (is that easy?)
     return jsonify(metrics), 200
 
 
@@ -117,8 +114,13 @@ def add_entry():
 
     # Wait for thread lock in the event cleanup is running
     thread_lock.acquire()
+
+    # If the group does not exsist, create it as a source key in the database
+    if request_json['group'] not in database:
+        database[request_json['group']] = {}
+
     # Turn "id" into a key to organize hosts, incert to database variable
-    database[request_json['id']] = request_json
+    database[request_json['group']][request_json['id']] = request_json
     # Release thread lock
     thread_lock.release()
 
@@ -129,6 +131,16 @@ def add_entry():
 @app.route('/api/v1/list', methods=['GET'])
 def api_list_all():
     return jsonify(database), 200
+
+
+# A route to return a certain group of the available entries
+@app.route('/api/v1/list/<group>', methods=['GET'])
+def api_list_group(group):
+    if group in database:
+        return jsonify(database[group]), 200
+
+    logging.error("'/api/v1/list/%s' - Unknown group" % group)
+    return jsonify({'error': "unknown group '%s'" % group}), 404
 
 
 # Grab current date and time, reply in json format
@@ -145,50 +157,83 @@ def clean_stale_probes():
 
         # Aquire thread lock for variable work
         with thread_lock:
-            
             logging.debug("Thread Locked!")
-            logging.debug("%i probe entries are registered" % len(database))
 
             # Initialize list 
             remove_probe_list = []
+            remove_group_list = []
 
-            # Scann all probes in the inventory, remove those that have aged to long
-            for probe in database:
-                # Caclulate current time and creation date to seconds passed
-                age = int((datetime.now() - datetime.strptime(database[probe]['create_date'], '%Y-%m-%dT%H:%M:%S.%f')).total_seconds())
+            # Initialize metric
+            remove_probe_count = 0
 
-                logging.debug("Probe '%s' checked in %i seconds ago" % (probe, age))
-                if age > database[probe]['keepalive']:
-                    logging.debug("Probe '%s' should be removed!" % probe)
-                    remove_probe_list.append(probe)
+            # Go through all groups for stale probes
+            for group in database:
+                # Scann all probes in the inventory, remove those that have aged to long
+                for probe in database[group]:
+                    # Caclulate current time and creation date to seconds passed
+                    age = int((datetime.now() - datetime.strptime(database[group][probe]['create_date'], '%Y-%m-%dT%H:%M:%S.%f')).total_seconds())
+
+                    logging.debug("Probe '%s' in group '%s' checked in %i seconds ago" % (probe, group, age))
+                    if age > database[group][probe]['keepalive']:
+                        logging.debug("Probe '%s' in group '%s' should be removed!" % (probe, group))
+                        remove_probe_list.append(probe)
             
-            # Remove old probed from global database
-            for item in remove_probe_list:
-                database.pop(item, None)
-            
+                # Remove old probed from global database
+                for item in remove_probe_list:
+                    database[group].pop(item, None)
+
+                # Add to metric counter
+                remove_probe_count = len(remove_probe_list) + remove_probe_count
+
+                # Clear list
+                remove_probe_list = []
+
             # Warning log on removed probes
-            if remove_probe_list:
-                logging.warning("Removed %i probe(s) due to aging - %s" % (len(remove_probe_list), str(remove_probe_list)))
+            if remove_probe_count > 0:
+                logging.warning("Removed %i probe(s) due to aging" % remove_probe_count)
+
+            # If a group is empty add to removal list
+            for group in database:
+                if not database[group]:
+                    logging.warning("Group '%s' is empty, removing it." % group)
+                    remove_group_list.append(group)
+
+            # Remove empty groups from global database
+            for item in remove_group_list:
+                database.pop(item, None)
 
             # Lets collect and crunch some metrics here
             global metrics
-            metrics["probe_removed"] = len(remove_probe_list)
-            metrics["probe_count"] = len(database)
-            metrics["database_size_bytes"] = sys.getsizeof(database)
+
+            # Calculate the number of active nodes 
+            node_count = 0
+            for group in database:
+                node_count = node_count + len(database[group])
+            logging.info("%i active probe(s) are registered" % node_count)
+            
+            # Write metrics
+            metrics["probe_count_removed"] = remove_probe_count
+            metrics["probe_count_active"] = node_count
+            metrics["group_count_active"] = len(database)
+            metrics["group_count_removed"] = len(remove_group_list)
+            metrics["database_size_bytes"] = asizeof.asizeof(database)
             metrics["clean_runtime"] = datetime.now().timestamp() - start_time
             metrics["uptime"] = datetime.now().timestamp() - metrics["start_time"].timestamp()
             metrics["metrics_timestamp"] = datetime.now()
 
         logging.debug("Thread Unlocked!")
 
-# Gather application start time for metrics and data validation
-metrics["start_time"] = datetime.now()
-
-# Start background threaded process to clean stale probes
-inline_thread_cleanup = threading.Thread(target=clean_stale_probes, name="CleanThread")
-inline_thread_cleanup.start()
 
 if __name__ == "__main__":
+    # Gather application start time for metrics and data validation
+    metrics["start_time"] = datetime.now()
+
+    # Start background threaded process to clean stale probes
+    inline_thread_cleanup = threading.Thread(target=clean_stale_probes, name="CleanThread")
+    inline_thread_cleanup.start()
+
+    logging.info("Flask server started on '%s:%s'" % (config.host, config.port))
+
     # Te get flask out of development mode
     # https://stackoverflow.com/questions/51025893/flask-at-first-run-do-not-use-the-development-server-in-a-production-environmen
     from waitress import serve
