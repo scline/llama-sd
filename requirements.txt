@@ -1,4 +1,0 @@
-flask==1.1.2
-flask_expects_json==1.5.0
-configargparse==1.2.3
-waitress==1.4.4
