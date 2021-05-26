@@ -40,11 +40,10 @@ else:
 
 # Set a default registration group if one is not provided
 if config.group:
-    # How many seconds before kicking probes from service discovery
+    # Load the default group from configuration variables.
     default_group = str(config.group)
 else:
-    # 86400 seconds = 1 day
-    default_group = "default"
+    default_group = "none"
 
 # Debug logging for settings
 logging.debug(p.format_values())

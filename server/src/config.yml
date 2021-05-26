@@ -8,8 +8,12 @@ host: 0.0.0.0
 
 # How long before service discovery removes an enpoint that has not
 # checked in. This value is in seconds and is set by default to the 
-# value listed below. Probe settings will overwrite this values.
+# value listed below. Probe settings will overwrite this value.
 keepalive: 86400
+
+# Default group probes will be assigned if none is given. Probe 
+# settings will overwrite this value. Defaults to 'none' if not set.
+group: "DEFAULT"
 
 # Debug logging level, True or False
 verbose: True
