@@ -6,8 +6,8 @@ curl -H 'Content-Type: application/json' -X POST \
     -d '{
 	"port": '$i',
 	"keepalive": 90,
-	"group": "testing",
-	"meta": {
+	"group": "'$i'",
+	"tags": {
 		"version": "1.1",
 		"src_dc": "SOURCE",
 		"dst_datacenter": "Destination"

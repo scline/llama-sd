@@ -15,7 +15,7 @@ curl -H 'Content-Type: application/json' -X POST \
     -d '{
 	"port": '$i',
 	"keepalive": 120,
-	"meta": {
+	"tags": {
 		"version": "1.0",
 		"src_dc": "SOURCE",
 		"dst_datacenter": "Destination"
@@ -33,7 +33,7 @@ curl -H 'Content-Type: application/json' -X POST \
 	"port": '$i',
 	"group": "new_group",
 	"keepalive": 120,
-	"meta": {
+	"tags": {
 		"version": "1.0",
 		"src_dc": "SOURCE",
 		"dst_datacenter": "Destination"

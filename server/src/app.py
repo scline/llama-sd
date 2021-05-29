@@ -9,9 +9,9 @@ from time import sleep
 # Load configuration file and settings
 p = configargparse.ArgParser(default_config_files=['.config.yml', '~/.config.yml'])
 p.add('-c', '--config', required=False, is_config_file=True, help='config file path')
-p.add('-g', '--group', help='default group name', env_var='APP_GROUP')
+p.add('-g', '--group', required=False, help='default group name', env_var='APP_GROUP')
 p.add('-i', '--host', required=False, help='listening web ip', env_var='APP_HOST')
-p.add('-k', '--keepalive', help='default keepalive value in seconds', env_var='APP_KEEPALIVE')
+p.add('-k', '--keepalive', required=False, help='default keepalive value in seconds', env_var='APP_KEEPALIVE')
 p.add('-p', '--port', required=False, help='listening web port', env_var='APP_PORT')
 p.add('-v', '--verbose', help='verbose logging', action='store_true', env_var='APP_VERBOSE')
 
@@ -66,7 +66,7 @@ schema = {
         'port': {'type': 'number'},
         'keepalive': {'type': 'number', "default": default_keepalive },
         'group': {'type': 'string', "default": default_group },
-        'meta': {
+        'tags': {
             'type': 'object',
             'properties': {
                 'version': {'type': 'string'}
