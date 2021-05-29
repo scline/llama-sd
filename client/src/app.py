@@ -27,10 +27,6 @@ else:
 logging.debug(p.format_values())
 logging.debug(config)
     
-# Metadata
-    # Need a way to consume via web config or environment variable
-        # { key: value, key2: value2 }
-    # Add client version to the JSON
 
 # Process tags given in environment variable.
 def process_tags(tags):
@@ -39,14 +35,15 @@ def process_tags(tags):
 
     # Cut string with multiple tags into a list for future processing
     tags_list = tags.split(", ")
+
+    # Add client version to the tags
     tags_list.append("version: %s" % application_version)
 
-    logging.debug(tags_list)
-
+    logging.debug("Tags: '%s'" % tags_list)
     return tags_list
 
 
-# Threaded function that periotically pushes JSON registration to the LLAMA server endpoint.
+# Push JSON information ever 60 seconds to the server for registration and keepalives
 def keepalive():
     # Run every 60 seconds
     while(not sleep(60)):
