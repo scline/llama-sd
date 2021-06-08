@@ -17,15 +17,12 @@ ENV \
 
 # application spisific environment variables (overwrites config file if used)
 #ENV \
-#    APP_PORT=80 \
-#    APP_HOST=0.0.0.0 \
-#    APP_VERBOSE=False \
-#    APP_GROUP="none" \
-#    APP_KEEPALIVE=86400 \
+#    LLAMA_SERVER="http://127.0.0.1" \
+#    LLAMA_PORT=8100 \
+#    LLAMA_KEEPALIVE=300 \
+#    LLAMA_GROUP="default" \
+#    LLAMA_TAGS="[ tag1: value1, tag2: value2 ]" \
 #    APP_VERBOSE=True
-
-# Expose webport
-EXPOSE 80
 
 # command to run on container start
 CMD [ "python", "./app.py" ]
