@@ -105,9 +105,9 @@ def add_entry():
     request_json.update(create_date())
 
     # Add requestor IP address to the json data
-    request_json.update({'address': '%s' % request.remote_addr})
+    request_json.update({'ip': '%s' % request.remote_addr})
 
-    # Formulate probe ID by "Address:Port", ex: "192.168.1.12:8100"
+    # Formulate probe ID by "IP:Port", ex: "192.168.1.12:8100"
     request_json.update({'id': '%s:%s' % (request.remote_addr, request_json['port'])})
 
     logging.debug("Registration Update: '%s'" % request_json['id'])
