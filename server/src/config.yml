@@ -1,9 +1,9 @@
 ### Web Server Settings ###
 
-# Port webserver listens on
+# Port webserver listens on. Defaults to 5000 if not set.
 port: 80
 
-# Server IP to listen for web traffic, 0.0.0.0 is all available IP's
+# Server IP to listen for web traffic, 0.0.0.0 is all available IP's. Defaults to 127.0.0.1 if not set.
 host: 0.0.0.0
 
 
