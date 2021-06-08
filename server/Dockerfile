@@ -12,12 +12,17 @@ COPY src/ .
 
 # environment variables
 ENV \
-    APP_PORT=80 \
-    APP_HOST=0.0.0.0 \
-    APP_VERBOSE=False \
-    APP_GROUP="none" \
-    APP_KEEPALIVE=86400 \
+    APP_CONFIG="config.yml" \
     PYTHONUNBUFFERED=0
+
+# application spisific environment variables (overwrites config file if used)
+#ENV \
+#    APP_PORT=80 \
+#    APP_HOST=0.0.0.0 \
+#    APP_VERBOSE=False \
+#    APP_GROUP="none" \
+#    APP_KEEPALIVE=86400 \
+#    APP_VERBOSE=True
 
 # Expose webport
 EXPOSE 80

@@ -12,16 +12,17 @@ COPY src/ .
 
 # environment variables
 ENV \
-    APP_PORT=80 \
-    APP_HOST=0.0.0.0 \
-    APP_VERBOSE=True \
-    APP_GROUP="none" \
-    APP_KEEPALIVE=86400 \
-    APP_TAGS="hostname: las1.something.com, src_short: las1, city: Las Vegas, Nevada" \
+    APP_CONFIG="config.yml" \
     PYTHONUNBUFFERED=0
 
-# Expose webport
-EXPOSE 80
+# application spisific environment variables (overwrites config file if used)
+#ENV \
+#    LLAMA_SERVER="http://127.0.0.1" \
+#    LLAMA_PORT=8100 \
+#    LLAMA_KEEPALIVE=300 \
+#    LLAMA_GROUP="default" \
+#    LLAMA_TAGS="[ tag1: value1, tag2: value2 ]" \
+#    APP_VERBOSE=True
 
 # command to run on container start
 CMD [ "python", "./app.py" ]
