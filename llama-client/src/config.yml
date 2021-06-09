@@ -14,8 +14,8 @@ keepalive: 300
 # Group probe register's as
 group: default
 
-# Port LLAMA probes are running on, 8100 is the default
-port: 8100
+# Port LLAMA probes are running on, 8100 is the default - !!! not working at this time !!!
+#port: 8100
 
 # Tags to register, "key: value, key: value". Please note "," are not valid here.
 tags: [ hostname: las1.something.com, src_short: las1, city: Las Vegas, state: Nevada ]

@@ -5,7 +5,7 @@ do
 curl -H 'Content-Type: application/json' -X POST \
     -d '{
 	"port": '$i',
-	"keepalive": 90,
+	"keepalive": 900,
 	"group": "'$i'",
 	"tags": {
 		"version": "1.1",
@@ -13,6 +13,6 @@ curl -H 'Content-Type: application/json' -X POST \
 		"dst_datacenter": "Destination"
 	}
 }' \
-    http://127.0.0.1/api/v1/register
+    http://10.1.0.107/api/v1/register
 ((i=i+1))
 done

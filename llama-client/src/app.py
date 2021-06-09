@@ -7,7 +7,7 @@ p = configargparse.ArgParser(default_config_files=['.config.yml', '~/.config.yml
 p.add('-c', '--config', required=False, is_config_file=True, help='config file path', env_var='APP_CONFIG')
 p.add('-g', '--group', help='default group name', env_var='LLAMA_GROUP')
 p.add('-k', '--keepalive', required=False, type=int, help='default keepalive value in seconds', env_var='LLAMA_KEEPALIVE')
-p.add('-p', '--port', type=int, help='LLAMA probe port', env_var='LLAMA_PORT')
+#p.add('-p', '--port', type=int, help='LLAMA probe port', env_var='LLAMA_PORT')
 p.add('-s', '--server', required=False, help='server IP or hostname', env_var='LLAMA_SERVER')
 p.add('-t', '--tags', required=False, help='tags in json format', action='append', env_var='LLAMA_TAGS')
 p.add('-v', '--verbose', help='verbose logging', action='store_true', env_var='APP_VERBOSE')
@@ -94,8 +94,12 @@ def keepalive():
     # Add tags to payload
     payload["tags"] = convert(config.tags)
 
+    # Display full JSON of registration
     logging.info("JSON Payload: %s" % json.dumps(payload))
-    logging.info("Registration will start in 60 seconds...")
+
+    # Push before while loop so we dont need to wait so long
+    post(payload)
+    logging.info("Keepalive Sent to '%s'" % config.server)
 
     # Run every 60 seconds
     while(not sleep(60)):
@@ -106,6 +110,9 @@ def keepalive():
 
 
 if __name__ == "__main__":
+    # TODO: Allow port to be configurabile
+    config.port = 8100
+
     # Add any application generated tags 
     process_tags(config.tags)
 

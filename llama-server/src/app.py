@@ -1,6 +1,6 @@
 import flask, threading, logging, configargparse
 
-from flask import request, jsonify
+from flask import request, jsonify, render_template, send_file
 from flask_expects_json import expects_json
 from datetime import datetime
 from pympler import asizeof
@@ -105,9 +105,9 @@ def add_entry():
     request_json.update(create_date())
 
     # Add requestor IP address to the json data
-    request_json.update({'address': '%s' % request.remote_addr})
+    request_json.update({'ip': '%s' % request.remote_addr})
 
-    # Formulate probe ID by "Address:Port", ex: "192.168.1.12:8100"
+    # Formulate probe ID by "IP:Port", ex: "192.168.1.12:8100"
     request_json.update({'id': '%s:%s' % (request.remote_addr, request_json['port'])})
 
     logging.debug("Registration Update: '%s'" % request_json['id'])
@@ -133,12 +133,41 @@ def api_list_all():
     return jsonify(database), 200
 
 
+# A route to return a list of hosts that the scraper will collect from
+@app.route('/api/v1/scraper', methods=['GET'])
+def api_scraper():
+    hosts = []
+    # Cycle through all groups to formulate a list
+    for group in database:
+        for host in database[group]:
+            hosts.append(database[group][host]['ip'])
+    logging.debug("Scraper Host List: %s" % hosts)
+
+    # Turn the host LIST into a comma separated string
+    joined_string = ",".join(hosts)
+
+    return render_template("scraper.j2", hosts=joined_string)
+
+
+# A route to return LLAMA Collector config file via template
+@app.route('/api/v1/config/<group>', methods=['GET'])
+def api_config(group):
+    if group in database:
+        logging.error(database[group])
+        return render_template("config.yaml.j2", template_data=database[group])
+
+    # If group is not located, error
+    logging.error("'/api/v1/config/%s' - Unknown group" % group)
+    return jsonify({'error': "unknown group '%s'" % group}), 404
+
+
 # A route to return a certain group of the available entries
 @app.route('/api/v1/list/<group>', methods=['GET'])
 def api_list_group(group):
     if group in database:
         return jsonify(database[group]), 200
 
+    # If group is not located, error
     logging.error("'/api/v1/list/%s' - Unknown group" % group)
     return jsonify({'error': "unknown group '%s'" % group}), 404
 

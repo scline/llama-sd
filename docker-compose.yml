@@ -1,0 +1,78 @@
+# docker compose used for testing the application
+
+version: "3.5"
+
+services:
+  llama-server-dev:
+    build: 
+      context: ./llama-server
+      dockerfile: ./Dockerfile
+    container_name: llama-server-dev
+    hostname: llama-server-dev
+    ports:
+      - "80:80"
+    environment:
+      - APP_HOST=0.0.0.0
+      - APP_PORT=80
+      - APP_GROUP=none
+      - APP_KEEPALIVE=86400
+      - APP_VERBOSE=True
+      - TZ=America/Los_Angeles
+
+      
+  llama-scraper-dev:
+    build: 
+      context: ./llama-scraper  
+      dockerfile: ./Dockerfile
+    container_name: llama-scraper-dev
+    hostname: llama-scraper-dev
+    environment:
+      - LLAMA_SERVER=http://10.1.0.107
+      - INFLUXDB_HOST=10.1.0.107
+      - INFLUXDB_PORT=8086
+      - INFLUXDB_DB=llama
+    depends_on:
+      - "llama-server-dev"
+
+
+  influxdb:
+    image: influxdb:1.8
+    ports:
+      - '8086:8086'
+    container_name: influxdb
+    environment:
+      - INFLUXDB_DB=llama
+
+
+  llama-client-dev:
+    build: 
+      context: ./llama-client
+      dockerfile: ./Dockerfile
+    network_mode: host
+    container_name: llama-client-dev
+    hostname: llama-client-dev
+    environment:
+      - LLAMA_SERVER=http://10.1.0.107
+      - LLAMA_KEEPALIVE=300
+      - LLAMA_GROUP=default
+      - "LLAMA_TAGS=[source: dev1, name: ONE]"
+      - APP_VERBOSE=True
+      - TZ=America/Los_Angeles
+    depends_on:
+      - "llama-server-dev"
+
+  
+  llama-probe-dev:
+    build: 
+      context: ./llama-probe   
+      dockerfile: ./Dockerfile
+    ports:
+      - "8100:8100/tcp"
+      - "8100:8100/udp"
+    container_name: llama-probe-dev
+    hostname: llama-probe-dev
+    environment:
+      - LLAMA_SERVER=http://10.1.0.107
+      - LLAMA_GROUP=default
+    depends_on:
+      - "llama-client-dev"
