@@ -6,6 +6,7 @@ from time import sleep
 p = configargparse.ArgParser(default_config_files=['.config.yml', '~/.config.yml'])
 p.add('-c', '--config', required=False, is_config_file=True, help='config file path', env_var='APP_CONFIG')
 p.add('-g', '--group', help='default group name', env_var='LLAMA_GROUP')
+p.add('-i', '--ip', required=False, help='source IP to advertise', env_var='LLAMA_SOURCE_IP')
 p.add('-k', '--keepalive', required=False, type=int, help='default keepalive value in seconds', env_var='LLAMA_KEEPALIVE')
 #p.add('-p', '--port', type=int, help='LLAMA probe port', env_var='LLAMA_PORT')
 p.add('-s', '--server', required=False, help='server IP or hostname', env_var='LLAMA_SERVER')
@@ -90,6 +91,10 @@ def keepalive():
     # Add group value to registration
     if config.group:
         payload["group"] = config.group
+
+    # Add source IP if one is given
+    if config.ip:
+        payload["ip"] = config.ip
 
     # Add tags to payload
     payload["tags"] = convert(config.tags)

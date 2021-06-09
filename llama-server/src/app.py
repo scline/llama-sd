@@ -104,8 +104,10 @@ def add_entry():
     # Add create date to the json data
     request_json.update(create_date())
 
-    # Add requestor IP address to the json data
-    request_json.update({'ip': '%s' % request.remote_addr})
+    # If IP address was not set, try to figure out what it should be. "If key NOT IN dict"
+    if not request_json.get('ip'):
+        # Add requestor IP address to the json data
+        request_json.update({'ip': '%s' % request.remote_addr})
 
     # Formulate probe ID by "IP:Port", ex: "192.168.1.12:8100"
     request_json.update({'id': '%s:%s' % (request.remote_addr, request_json['port'])})
@@ -142,6 +144,11 @@ def api_scraper():
         for host in database[group]:
             hosts.append(database[group][host]['ip'])
     logging.debug("Scraper Host List: %s" % hosts)
+
+
+    # If list is empty, no hosts have joined, return 127.0.0.1
+    if len(hosts) == 0:
+        hosts.append("127.0.0.1")
 
     # Turn the host LIST into a comma separated string
     joined_string = ",".join(hosts)
