@@ -56,6 +56,7 @@ services:
       - LLAMA_KEEPALIVE=300
       - LLAMA_GROUP=default
       - "LLAMA_TAGS=[source: dev1, name: ONE]"
+      - LLAMA_SOURCE_IP=192.168.100.5
       - APP_VERBOSE=True
       - TZ=America/Los_Angeles
     depends_on:
@@ -64,7 +65,7 @@ services:
   
   llama-probe-dev:
     build: 
-      context: ./llama-probe   
+      context: ./llama-probe
       dockerfile: ./Dockerfile
     ports:
       - "8100:8100/tcp"

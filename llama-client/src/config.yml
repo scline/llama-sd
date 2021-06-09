@@ -20,6 +20,8 @@ group: default
 # Tags to register, "key: value, key: value". Please note "," are not valid here.
 tags: [ hostname: las1.something.com, src_short: las1, city: Las Vegas, state: Nevada ]
 
+# Tell the server what your IP address should be, if none is given the server will try to figure this out for you
+#ip: 127.0.0.1
 
 ### Application Debugging ###
 
