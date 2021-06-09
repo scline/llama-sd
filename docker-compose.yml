@@ -5,7 +5,7 @@ version: "3.5"
 services:
   llama-server-dev:
     build: 
-      context: ./server
+      context: ./llama-server
       dockerfile: ./Dockerfile
     container_name: llama-server-dev
     hostname: llama-server-dev
@@ -43,9 +43,10 @@ services:
     environment:
       - INFLUXDB_DB=llama
 
+
   llama-client-dev:
     build: 
-      context: ./client
+      context: ./llama-client
       dockerfile: ./Dockerfile
     network_mode: host
     container_name: llama-client-dev
@@ -60,6 +61,7 @@ services:
     depends_on:
       - "llama-server-dev"
 
+  
   llama-probe-dev:
     build: 
       context: ./llama-probe   
