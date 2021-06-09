@@ -94,8 +94,12 @@ def keepalive():
     # Add tags to payload
     payload["tags"] = convert(config.tags)
 
+    # Display full JSON of registration
     logging.info("JSON Payload: %s" % json.dumps(payload))
-    logging.info("Registration will start in 60 seconds...")
+
+    # Push before while loop so we dont need to wait so long
+    post(payload)
+    logging.info("Keepalive Sent to '%s'" % config.server)
 
     # Run every 60 seconds
     while(not sleep(60)):

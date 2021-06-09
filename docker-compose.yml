@@ -24,46 +24,30 @@ services:
     build: 
       context: ./client
       dockerfile: ./Dockerfile
+    network_mode: host
     container_name: llama-client-dev1
     hostname: llama-client-dev1
     environment:
-      - LLAMA_SERVER=http://llama-server-dev
+      - LLAMA_SERVER=http://10.1.0.107
       - LLAMA_KEEPALIVE=300
       - LLAMA_GROUP=default
       - "LLAMA_TAGS=[source: dev1, name: ONE]"
       - APP_VERBOSE=True
       - TZ=America/Los_Angeles
-    links:
-      - llama-server-dev
+    depends_on:
+      - "llama-server-dev"
 
-  llama-client-dev2:
+  llama-probe-dev1:
     build: 
-      context: ./client
+      context: ./llama-probe
       dockerfile: ./Dockerfile
-    container_name: llama-client-dev2
-    hostname: llama-client-dev2
+    ports:
+      - "8100:8100/tcp"
+      - "8100:8100/udp"
+    container_name: llama-probe-dev1
+    hostname: llama-probe-dev1
     environment:
-      - LLAMA_SERVER=http://llama-server-dev
-      - LLAMA_KEEPALIVE=300
+      - LLAMA_SERVER=http://10.1.0.107
       - LLAMA_GROUP=default
-      - "LLAMA_TAGS=[source: dev2, name: TWO]"
-      - APP_VERBOSE=True
-      - TZ=America/Los_Angeles
-    links:
-      - llama-server-dev
-
-  llama-client-dev3:
-    build: 
-      context: ./client
-      dockerfile: ./Dockerfile
-    container_name: llama-client-dev3
-    hostname: llama-client-dev3
-    environment:
-      - LLAMA_SERVER=http://llama-server-dev
-      - LLAMA_KEEPALIVE=300
-      - LLAMA_GROUP=default
-      - "LLAMA_TAGS=[source: dev3, name: THREE]"
-      - APP_VERBOSE=True
-      - TZ=America/Los_Angeles
-    links:
-      - llama-server-dev
+    depends_on:
+      - "llama-client-dev1"
