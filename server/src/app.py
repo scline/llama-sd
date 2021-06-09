@@ -133,6 +133,22 @@ def api_list_all():
     return jsonify(database), 200
 
 
+# A route to return a list of hosts that the scraper will collect from
+@app.route('/api/v1/scraper', methods=['GET'])
+def api_scraper():
+    hosts = []
+    # Cycle through all groups to formulate a list
+    for group in database:
+        for host in database[group]:
+            hosts.append(database[group][host]['ip'])
+    logging.debug("Scraper Host List: %s" % hosts)
+
+    # Turn the host LIST into a comma separated string
+    joined_string = ",".join(hosts)
+
+    return render_template("scraper.j2", hosts=joined_string)
+
+
 # A route to return LLAMA Collector config file via template
 @app.route('/api/v1/config/<group>', methods=['GET'])
 def api_config(group):

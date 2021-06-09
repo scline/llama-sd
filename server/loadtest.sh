@@ -13,6 +13,6 @@ curl -H 'Content-Type: application/json' -X POST \
 		"dst_datacenter": "Destination"
 	}
 }' \
-    http://127.0.0.1/api/v1/register
+    http://10.1.0.107/api/v1/register
 ((i=i+1))
 done
