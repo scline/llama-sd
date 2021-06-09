@@ -19,14 +19,39 @@ services:
       - APP_VERBOSE=True
       - TZ=America/Los_Angeles
 
+      
+  llama-scraper-dev:
+    build: 
+      context: ./llama-scraper  
+      dockerfile: ./Dockerfile
+    container_name: llama-scraper-dev
+    hostname: llama-scraper-dev
+    environment:
+      - LLAMA_SERVER=http://10.1.0.107
+      - INFLUXDB_HOST=10.1.0.107
+      - INFLUXDB_PORT=8086
+      - INFLUXDB_DB=llama
+      - INFLUXDB_USER=username
+      - INFLUXDB_PASSWORD=hunter42
+    depends_on:
+      - "llama-server-dev"
 
-  llama-client-dev1:
+
+  influxdb:
+    image: influxdb:1.8
+    ports:
+      - '8086:8086'
+    container_name: influxdb
+    environment:
+      - INFLUXDB_DB=llama
+
+  llama-client-dev:
     build: 
       context: ./client
       dockerfile: ./Dockerfile
     network_mode: host
-    container_name: llama-client-dev1
-    hostname: llama-client-dev1
+    container_name: llama-client-dev
+    hostname: llama-client-dev
     environment:
       - LLAMA_SERVER=http://10.1.0.107
       - LLAMA_KEEPALIVE=300
@@ -37,17 +62,17 @@ services:
     depends_on:
       - "llama-server-dev"
 
-  llama-probe-dev1:
+  llama-probe-dev:
     build: 
-      context: ./llama-probe
+      context: ./llama-probe   
       dockerfile: ./Dockerfile
     ports:
       - "8100:8100/tcp"
       - "8100:8100/udp"
-    container_name: llama-probe-dev1
-    hostname: llama-probe-dev1
+    container_name: llama-probe-dev
+    hostname: llama-probe-dev
     environment:
       - LLAMA_SERVER=http://10.1.0.107
       - LLAMA_GROUP=default
     depends_on:
-      - "llama-client-dev1"
+      - "llama-client-dev"
