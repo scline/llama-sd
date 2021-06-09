@@ -31,8 +31,6 @@ services:
       - INFLUXDB_HOST=10.1.0.107
       - INFLUXDB_PORT=8086
       - INFLUXDB_DB=llama
-      - INFLUXDB_USER=username
-      - INFLUXDB_PASSWORD=hunter42
     depends_on:
       - "llama-server-dev"
 
