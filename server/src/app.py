@@ -1,6 +1,6 @@
 import flask, threading, logging, configargparse
 
-from flask import request, jsonify
+from flask import request, jsonify, render_template, send_file
 from flask_expects_json import expects_json
 from datetime import datetime
 from pympler import asizeof
@@ -133,12 +133,25 @@ def api_list_all():
     return jsonify(database), 200
 
 
+# A route to return LLAMA Collector config file via template
+@app.route('/api/v1/config/<group>', methods=['GET'])
+def api_config(group):
+    if group in database:
+        logging.error(database[group])
+        return render_template("config.yaml.j2", template_data=database[group])
+
+    # If group is not located, error
+    logging.error("'/api/v1/config/%s' - Unknown group" % group)
+    return jsonify({'error': "unknown group '%s'" % group}), 404
+
+
 # A route to return a certain group of the available entries
 @app.route('/api/v1/list/<group>', methods=['GET'])
 def api_list_group(group):
     if group in database:
         return jsonify(database[group]), 200
 
+    # If group is not located, error
     logging.error("'/api/v1/list/%s' - Unknown group" % group)
     return jsonify({'error': "unknown group '%s'" % group}), 404
 

@@ -1,0 +1,69 @@
+# docker compose used for testing the application
+
+version: "3.5"
+
+services:
+  llama-server-dev:
+    build: 
+      context: ./server
+      dockerfile: ./Dockerfile
+    container_name: llama-server-dev
+    hostname: llama-server-dev
+    ports:
+      - "80:80"
+    environment:
+      - APP_HOST=0.0.0.0
+      - APP_PORT=80
+      - APP_GROUP=none
+      - APP_KEEPALIVE=86400
+      - APP_VERBOSE=True
+      - TZ=America/Los_Angeles
+
+
+  llama-client-dev1:
+    build: 
+      context: ./client
+      dockerfile: ./Dockerfile
+    container_name: llama-client-dev1
+    hostname: llama-client-dev1
+    environment:
+      - LLAMA_SERVER=http://llama-server-dev
+      - LLAMA_KEEPALIVE=300
+      - LLAMA_GROUP=default
+      - "LLAMA_TAGS=[source: dev1, name: ONE]"
+      - APP_VERBOSE=True
+      - TZ=America/Los_Angeles
+    links:
+      - llama-server-dev
+
+  llama-client-dev2:
+    build: 
+      context: ./client
+      dockerfile: ./Dockerfile
+    container_name: llama-client-dev2
+    hostname: llama-client-dev2
+    environment:
+      - LLAMA_SERVER=http://llama-server-dev
+      - LLAMA_KEEPALIVE=300
+      - LLAMA_GROUP=default
+      - "LLAMA_TAGS=[source: dev2, name: TWO]"
+      - APP_VERBOSE=True
+      - TZ=America/Los_Angeles
+    links:
+      - llama-server-dev
+
+  llama-client-dev3:
+    build: 
+      context: ./client
+      dockerfile: ./Dockerfile
+    container_name: llama-client-dev3
+    hostname: llama-client-dev3
+    environment:
+      - LLAMA_SERVER=http://llama-server-dev
+      - LLAMA_KEEPALIVE=300
+      - LLAMA_GROUP=default
+      - "LLAMA_TAGS=[source: dev3, name: THREE]"
+      - APP_VERBOSE=True
+      - TZ=America/Los_Angeles
+    links:
+      - llama-server-dev
