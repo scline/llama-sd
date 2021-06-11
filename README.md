@@ -88,14 +88,14 @@ docker run --unless-stopped -d \
 -e LLAMA_SERVER=http://llama.packetpals.com:8105 \
 -e LLAMA_KEEPALIVE=300 \
 -e "LLAMA_TAGS=[source: some_github_source, hostname: somehostname]" \
-llama-client:latest
+smcline06/llama-client:latest
 
 docker run --unless-stopped -d \
 -p 8100:8100/tcp \
 -p 8100:8100/udp \
 -e LLAMA_SERVER=http://llama.packetpals.com:8105 \
 -e LLAMA_GROUP=github \
-llama-probe:latest
+smcline06/llama-probe:latest
 ```
 
 ## Network Requirements
@@ -107,6 +107,10 @@ Probes are hardcoded to use TCP and UDP port 8100 for communication. In the futu
 
 ![enter image description here](https://github.com/scline/llama-sd/blob/master/docs/network.png) 
 
+## Changelog
+- 0.0.1 - 2021-11-04
+  - Initial Build
+  
 ## TODO
 - Show examples of using docker-compose
 - Outline API URL examples and purposes
