@@ -109,7 +109,7 @@ Probes are hardcoded to use TCP and UDP port 8100 for communication. In the futu
 
 ## Changelog
 - 0.0.1 - 2021-11-04
-- - Initial Build
+  - Initial Build
   
 ## TODO
 - Show examples of using docker-compose
