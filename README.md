@@ -99,11 +99,11 @@ llama-probe:latest
 ```
 
 ## Network Requirements
-Probes are hard coded to use TCP and UDP port 8100 for communication. In the future this will be configurible. If deploying this behind a NAT, for example within a SOHO environment then you will need to setup destination ports accordingly on your home router. 
+Probes are hardcoded to use TCP and UDP port 8100 for communication. In the future, this will be configurable. If deploying this behind a NAT, for example, within a SOHO environment, then you will need to set up destination ports accordingly on your home router. 
 
 | Source | Destination | Destination Port | Protocal
 |--|--|--|--|
-| 0.0.0.0/0 (Internet) | Your public IP |8100 | TCP + UDP| 
+| 0.0.0.0/0 (Internet) | Public IP/Interface |8100 | TCP + UDP| 
 
 ![enter image description here](https://github.com/scline/llama-sd/blob/master/docs/network.png) 
 
