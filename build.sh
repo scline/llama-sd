@@ -2,12 +2,13 @@
 # Simple script to build containers located in this repo, used to pipeline work later down the line
 
 # Tag arm if built from RaspberryPi
-if [ "echo $(uname -m))" = "arm7l" ]
-then
-    tag="arm7_"
-    else
-    tag=""
-fi
+OS=$(uname -m)
+
+case "$OS" in
+  arm7*)   tag="arm7" ;;
+  arm64*)   tag="arm64" ;;
+  *)      tag="" ;;
+esac
 
 echo "TAG: $tag"
 
