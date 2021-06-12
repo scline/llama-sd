@@ -6,8 +6,8 @@ ARCH=$(uname -m)
 echo "ARCH: $ARCH"
 
 case "$ARCH" in
-  arm7*)    tag="arm7"                              ;;
-  arm64*)   tag="arm64"                             ;;
+  armv7*)    tag="arm7"                              ;;
+  arm64)   tag="arm64"                             ;;
   x86_64)   tag=""                                  ;;
   *)        echo "UNKNOWN ARCH, EXITING"; exit      ;;
 esac
