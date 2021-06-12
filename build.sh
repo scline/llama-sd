@@ -12,7 +12,6 @@ case "$ARCH" in
   *)        echo "UNKNOWN ARCH, EXITING"; exit      ;;
 esac
 
-echo "ARCH: $ARCH"
 echo "TAG: $tag"
 
 # Build server
@@ -33,16 +32,16 @@ docker push smcline06/llama-client:${tag}latest
 
 # Build scraper
 version=`cat $PWD/llama-scraper/version`
-docker build $PWD/llama-scraper -t smcline06/llama-scraper${tag}${version}
+docker build $PWD/llama-scraper -t smcline06/llama-scraper:${tag}${version}
 docker build $PWD/llama-scraper -t smcline06/llama-scraper:${tag}latest
 
-docker push smcline06/llama-scraper${tag}${version}
+docker push smcline06/llama-scraper:${tag}${version}
 docker push smcline06/llama-scraper:${tag}latest
 
 # Build probe
 version=`cat $PWD/llama-probe/version`
-docker build $PWD/llama-probe -t smcline06/llama-probe${tag}${version}
+docker build $PWD/llama-probe -t smcline06/llama-probe:${tag}${version}
 docker build $PWD/llama-probe -t smcline06/llama-probe:${tag}latest
 
-docker push smcline06/llama-probe${tag}${version}
+docker push smcline06/llama-probe:${tag}${version}
 docker push smcline06/llama-probe:${tag}latest
