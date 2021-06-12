@@ -84,13 +84,13 @@ Installation via Docker containers is going to be the simplest way. This will wo
 
 ### 1 line Probe install
 ```
-docker run --unless-stopped -d \
+docker run --restart unless-stopped -d \
 -e LLAMA_SERVER=http://llama.packetpals.com:8105 \
 -e LLAMA_KEEPALIVE=300 \
 -e "LLAMA_TAGS=[source: some_github_source, hostname: somehostname]" \
 smcline06/llama-client:latest
 
-docker run --unless-stopped -d \
+docker run --restart unless-stopped -d \
 -p 8100:8100/tcp \
 -p 8100:8100/udp \
 -e LLAMA_SERVER=http://llama.packetpals.com:8105 \
