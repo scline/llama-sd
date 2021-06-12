@@ -2,14 +2,17 @@
 # Simple script to build containers located in this repo, used to pipeline work later down the line
 
 # Tag arm if built from RaspberryPi
-OS=$(uname -m)
+ARCH=$(uname -m)
+echo "ARCH: $ARCH"
 
-case "$OS" in
-  arm7*)   tag="arm7" ;;
-  arm64*)   tag="arm64" ;;
-  *)      tag="" ;;
+case "$ARCH" in
+  arm7*)    tag="arm7"                              ;;
+  arm64*)   tag="arm64"                             ;;
+  x86_64)   tag=""                                  ;;
+  *)        echo "UNKNOWN ARCH, EXITING"; exit      ;;
 esac
 
+echo "ARCH: $ARCH"
 echo "TAG: $tag"
 
 # Build server
