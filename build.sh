@@ -19,12 +19,12 @@ version=`cat $PWD/llama-server/version`
 docker build $PWD/llama-server -t smcline06/llama-server:${tag}${version}
 docker build $PWD/llama-server -t smcline06/llama-server:${tag}latest
 
-docker push smcline06/llama-server:$tag_$version
+docker push smcline06/llama-server:${tag}${version}
 docker push smcline06/llama-server:${tag}latest
 
 # Build client
 version=`cat $PWD/llama-client/version`
-docker build $PWD/llama-client -t smcline06/llama-client:$tag_$version
+docker build $PWD/llama-client -t smcline06/llama-client:${tag}${version}
 docker build $PWD/llama-client -t smcline06/llama-client:${tag}latest
 
 docker push smcline06/llama-client:${tag}${version}
