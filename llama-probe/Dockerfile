@@ -11,6 +11,7 @@ RUN go install -v github.com/dropbox/llama/cmd/reflector
 # environment variables
 ENV \
     LLAMA_SERVER="http://127.0.0.1" \
+    LLAMA_PORT=8100 \
     LLAMA_GROUP="default" 
 
 EXPOSE 8100/tcp
