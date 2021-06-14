@@ -13,6 +13,7 @@ ENV \
     LLAMA_SERVER="http://127.0.0.1" \
     LLAMA_GROUP="default" 
 
-EXPOSE 8100
+EXPOSE 8100/tcp
+EXPOSE 8100/udp
 
 CMD ["bash", "-c", "bash entrypoint.sh"]
