@@ -82,12 +82,13 @@ Docker container that contains two LLAMA components created by Dropbox. LLAMA-Re
 ## Instalation
 Installation via Docker containers is going to be the simplest way. This will work for x86 or ARM-based systems like the Raspberry Pi.
 
-### 1 line Probe install
+### Copy-Paste Probe install (Linux)
 ```
 docker run --restart unless-stopped -d \
 -e LLAMA_SERVER=http://llama.packetpals.com:8105 \
 -e LLAMA_KEEPALIVE=300 \
 -e "LLAMA_TAGS=[source: some_github_source, hostname: somehostname]" \
+--name llama-client \
 smcline06/llama-client:latest
 
 docker run --restart unless-stopped -d \
@@ -95,7 +96,26 @@ docker run --restart unless-stopped -d \
 -p 8100:8100/udp \
 -e LLAMA_SERVER=http://llama.packetpals.com:8105 \
 -e LLAMA_GROUP=github \
+--name llama-probe \
 smcline06/llama-probe:latest
+```
+
+### Copy-Paste Probe install (Raspberry Pi)
+```
+docker run --restart unless-stopped -d \
+-e LLAMA_SERVER=http://llama.packetpals.com:8105 \
+-e LLAMA_KEEPALIVE=300 \
+-e "LLAMA_TAGS=[source: some_github_source, hostname: somehostname]" \
+--name llama-client \
+smcline06/llama-client:arm7-latest
+
+docker run --restart unless-stopped -d \
+-p 8100:8100/tcp \
+-p 8100:8100/udp \
+-e LLAMA_SERVER=http://llama.packetpals.com:8105 \
+-e LLAMA_GROUP=github \
+--name llama-probe \
+smcline06/llama-probe:arm7-latest
 ```
 
 ## Network Requirements
@@ -108,8 +128,7 @@ Probes are hardcoded to use TCP and UDP port 8100 for communication. In the futu
 ![enter image description here](https://github.com/scline/llama-sd/blob/master/docs/network.png) 
 
 ## Changelog
-- 0.0.1 - 2021-11-04
-  - Initial Build
+n/a (things are very beta)
   
 ## TODO
 - Show examples of using docker-compose

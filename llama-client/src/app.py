@@ -16,7 +16,7 @@ p.add('-v', '--verbose', help='verbose logging', action='store_true', env_var='A
 config = p.parse_args()
 
 # Application version variable for tagging
-application_version = "0.0.1"
+application_version = "0.0.2"
 
 # Set logging levels
 if config.verbose:

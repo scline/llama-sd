@@ -27,7 +27,7 @@ ports:
 port_groups:
     default:
         - port:     default
-          count:    5
+          count:    1
 
 # Used by tests to limit the rate at which probes are sent.
 # `cps` is cycles per second and defines the number of probes
@@ -39,7 +39,7 @@ port_groups:
 # per second).
 rate_limits:
     default:
-        cps:    5.0
+        cps:    1.0
 
 # Define how, where, and how many probes a collector should
 # be sending. Tests combine the other configuration attributes
