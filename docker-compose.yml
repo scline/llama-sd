@@ -56,7 +56,7 @@ services:
       - LLAMA_KEEPALIVE=300
       - LLAMA_GROUP=default
       - "LLAMA_TAGS=[probe_shortname: dev1, probe_name: localhost]"
-#      - LLAMA_SOURCE_IP=192.168.100.5
+#      - LLAMA_SOURCE_IP=127.0.0.10
       - APP_VERBOSE=True
       - TZ=America/Los_Angeles
     depends_on:
@@ -76,6 +76,7 @@ services:
       - LLAMA_SERVER=http://10.1.0.47
       - LLAMA_GROUP=default
       - LLAMA_PORT=8100
+#      - LLAMA_SOURCE_IP=127.0.0.10
     depends_on:
       - "llama-client-dev"
       - "llama-server-dev"

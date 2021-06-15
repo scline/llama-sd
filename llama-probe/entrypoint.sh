@@ -3,6 +3,12 @@
 echo "entrypoint.sh running..."
 server_url="$LLAMA_SERVER/api/v1/config/$LLAMA_GROUP?llamaport=$LLAMA_PORT"
 
+# Stitch source IP variable to URL if provided
+if [ "$LLAMA_SOURCE_IP" ]; then
+  echo "Probe wants to report its own IP as $LLAMA_SOURCE_IP"
+  server_url="$server_url&srcip=$LLAMA_SOURCE_IP"
+fi
+
 echo "SERVER: $LLAMA_SERVER"
 echo "GROUP: $LLAMA_GROUP"
 echo "PORT: $LLAMA_PORT"
