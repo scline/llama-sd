@@ -14,7 +14,7 @@ echo "Waiting 60 seconds before pulling a list of hosts to scrape..."
 sleep 60
 
 # Host list
-collector_hosts_new=`curl $server_url`
+collector_hosts_new=`curl -s $server_url`
 
 # Output for debugging
 echo "InfluxDB Host: $INFLUXDB_HOST"
@@ -35,7 +35,7 @@ do
   collector_hosts=$collector_hosts_new
 
   # New host list
-  collector_hosts_new=`curl $server_url`
+  collector_hosts_new=`curl -s $server_url`
 
   scraper_pid=`ps -A -o pid,cmd | grep scraper | grep -v grep | head -n 1 | awk '{print $1}'`
 

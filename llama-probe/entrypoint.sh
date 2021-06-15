@@ -1,10 +1,17 @@
 #!/bin/bash
 # Simple bash script to manage the llama probe
 echo "entrypoint.sh running..."
-server_url="$LLAMA_SERVER/api/v1/config/$LLAMA_GROUP"
+server_url="$LLAMA_SERVER/api/v1/config/$LLAMA_GROUP?llamaport=$LLAMA_PORT"
+
+# Stitch source IP variable to URL if provided
+if [ "$LLAMA_SOURCE_IP" ]; then
+  echo "Probe wants to report its own IP as $LLAMA_SOURCE_IP"
+  server_url="$server_url&srcip=$LLAMA_SOURCE_IP"
+fi
 
 echo "SERVER: $LLAMA_SERVER"
 echo "GROUP: $LLAMA_GROUP"
+echo "PORT: $LLAMA_PORT"
 echo "Config URL: $server_url"
 
 echo "Starting Reflector"
@@ -15,7 +22,7 @@ echo "Waiting 10 seconds before pulling a config file..."
 sleep 10
 
 # Save new configuration
-curl $server_url --output config.yaml
+curl -s $server_url --output config.yaml
 
 # Output config for docker logging
 echo "Configuration file:"
@@ -31,7 +38,7 @@ do
   sleep 30
 
   # Grab new config
-  curl $server_url --output config.yaml.tmp
+  curl -s $server_url --output config.yaml.tmp
 
   # Store MD5 hash of running and canidate config for later validations
   running_config="`md5sum config.yaml | awk '{print $1}'`"

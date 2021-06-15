@@ -1,4 +1,4 @@
-import flask, threading, logging, configargparse
+import json, flask, threading, logging, configargparse
 
 from flask import request, jsonify, render_template, send_file
 from flask_expects_json import expects_json
@@ -69,9 +69,11 @@ schema = {
         'tags': {
             'type': 'object',
             'properties': {
-                'version': {'type': 'string'}
+                'version': {'type': 'string'},
+                'probe_shortname': {'type': 'string'},
+                'probe_name': {'type': 'string'}
             },
-            'required': ['version']
+            'required': ['version', 'probe_shortname', 'probe_name']
         },
     },
     'required': ['port']
@@ -159,9 +161,66 @@ def api_scraper():
 # A route to return LLAMA Collector config file via template
 @app.route('/api/v1/config/<group>', methods=['GET'])
 def api_config(group):
-    if group in database:
-        logging.error(database[group])
-        return render_template("config.yaml.j2", template_data=database[group])
+    # Create a temporary database for data manipulation, we dont want this perm
+    #database_tmp = database.copy()
+    # Apparently thread safe way to perform a full database copy (not shadow)
+    database_tmp = json.loads(json.dumps(database))
+
+    if group in database_tmp:
+        # If requesting probe is in the group list, change target IP to 127.0.0.1
+        port = request.args.get('llamaport', None)
+        reported_source_ip = request.args.get('srcip', None)
+        remote_ip_address = request.remote_addr
+
+        # If a Source IP was provided, do things (hack around certain NAT scenario)
+        if reported_source_ip:
+            logging.info("CONFIG: '%s' says its IP is '%s'" % (request.remote_addr, reported_source_ip))
+            # TODO: Verify reported IP address is a valid ipv4 address
+            remote_ip_address = reported_source_ip
+
+        # Log if a client is not sending what port it has assigned
+        if not port:
+            logging.error("No port was given from probe '%s' when generating configuration" % remote_ip_address) 
+            port = "null"
+        
+        # Store probe ID "IP_ADDRESS:PORT"
+        requesting_probe_id = "%s:%s" % (remote_ip_address, port)
+        logging.debug("Config request from '%s'" % requesting_probe_id)
+
+        # Hi-jack the entry for the requesting probe and replace it with '127.0.0.1'
+        if requesting_probe_id in database_tmp[group]:
+            database_tmp[group][requesting_probe_id]["ip"] = "127.0.0.1"
+            logging.debug("Local probe translation to 127.0.0.1 - %s" % requesting_probe_id)
+
+            database_tmp[group][requesting_probe_id]["tags"]["dst_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
+            database_tmp[group][requesting_probe_id]["tags"]["dst_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"]
+            database_tmp[group][requesting_probe_id]["tags"]["src_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
+            database_tmp[group][requesting_probe_id]["tags"]["src_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"]
+
+            # Setup source + destination pairs per probe
+            for remote_id in database_tmp[group]:
+                # Dont manipulate self as this is already done
+                if remote_id == requesting_probe_id:
+                    pass
+                logging.debug("GROUP: %s, ID: %s, TAGS: %s" % (group, remote_id, database_tmp[group][remote_id]["tags"]))
+                logging.debug("GROUP: %s, ID: %s, TAGS: %s" % (group, requesting_probe_id, database_tmp[group][requesting_probe_id]["tags"]))
+
+                database_tmp[group][remote_id]["tags"]["dst_name"] = database_tmp[group][remote_id]["tags"]["probe_name"]
+                database_tmp[group][remote_id]["tags"]["dst_shortname"] = database_tmp[group][remote_id]["tags"]["probe_shortname"]
+                database_tmp[group][remote_id]["tags"]["src_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
+                database_tmp[group][remote_id]["tags"]["src_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"] 
+
+                # TODO: This is removing things in the loop, likely a placement issue
+                # Remove the "probe" name entries, we dont need to send those        
+                #database_tmp[group][remote_id]["tags"].pop("probe_name", None)   
+                #database_tmp[group][remote_id]["tags"].pop("probe_shortname", None)   
+        else:
+            # TODO: Send a blank or loop-back only config so the probe does not crash
+            logging.error("'%s' is not present in the group, should this probe exsist?" % requesting_probe_id)
+            return "500 - Unknown Probe", 500
+
+        logging.debug(database_tmp[group])
+        return render_template("config.yaml.j2", template_data=database_tmp[group])
 
     # If group is not located, error
     logging.error("'/api/v1/config/%s' - Unknown group" % group)
