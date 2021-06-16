@@ -187,37 +187,30 @@ def api_config(group):
         requesting_probe_id = "%s:%s" % (remote_ip_address, port)
         logging.debug("Config request from '%s'" % requesting_probe_id)
 
-        # Hi-jack the entry for the requesting probe and replace it with '127.0.0.1'
-        if requesting_probe_id in database_tmp[group]:
-            database_tmp[group][requesting_probe_id]["ip"] = "127.0.0.1"
-            logging.debug("Local probe translation to 127.0.0.1 - %s" % requesting_probe_id)
+        # Setup source + destination pairs per probe
+        for remote_id in database_tmp[group]:
 
-            database_tmp[group][requesting_probe_id]["tags"]["dst_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
-            database_tmp[group][requesting_probe_id]["tags"]["dst_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"]
-            database_tmp[group][requesting_probe_id]["tags"]["src_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
-            database_tmp[group][requesting_probe_id]["tags"]["src_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"]
+            # Rewrite self to 127.0.0.1
+            if remote_id == requesting_probe_id:
+                database_tmp[group][requesting_probe_id]["ip"] = "127.0.0.1"
+                logging.debug("Local probe translation to 127.0.0.1 - %s" % requesting_probe_id)
 
-            # Setup source + destination pairs per probe
-            for remote_id in database_tmp[group]:
-                # Dont manipulate self as this is already done
-                if remote_id == requesting_probe_id:
-                    pass
-                logging.debug("GROUP: %s, ID: %s, TAGS: %s" % (group, remote_id, database_tmp[group][remote_id]["tags"]))
-                logging.debug("GROUP: %s, ID: %s, TAGS: %s" % (group, requesting_probe_id, database_tmp[group][requesting_probe_id]["tags"]))
+                database_tmp[group][requesting_probe_id]["tags"]["dst_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
+                database_tmp[group][requesting_probe_id]["tags"]["dst_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"]
+                database_tmp[group][requesting_probe_id]["tags"]["src_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
+                database_tmp[group][requesting_probe_id]["tags"]["src_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"]
+                database_tmp[group][requesting_probe_id]["tags"]["group"] = group
+                pass
 
-                database_tmp[group][remote_id]["tags"]["dst_name"] = database_tmp[group][remote_id]["tags"]["probe_name"]
-                database_tmp[group][remote_id]["tags"]["dst_shortname"] = database_tmp[group][remote_id]["tags"]["probe_shortname"]
-                database_tmp[group][remote_id]["tags"]["src_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
-                database_tmp[group][remote_id]["tags"]["src_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"] 
+            database_tmp[group][remote_id]["tags"]["dst_name"] = database_tmp[group][remote_id]["tags"]["probe_name"]
+            database_tmp[group][remote_id]["tags"]["dst_shortname"] = database_tmp[group][remote_id]["tags"]["probe_shortname"]
+            database_tmp[group][remote_id]["tags"]["src_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
+            database_tmp[group][remote_id]["tags"]["src_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"] 
+            database_tmp[group][remote_id]["tags"]["group"] = group
 
-                # TODO: This is removing things in the loop, likely a placement issue
-                # Remove the "probe" name entries, we dont need to send those        
-                #database_tmp[group][remote_id]["tags"].pop("probe_name", None)   
-                #database_tmp[group][remote_id]["tags"].pop("probe_shortname", None)   
-        else:
-            # TODO: Send a blank or loop-back only config so the probe does not crash
-            logging.error("'%s' is not present in the group, should this probe exsist?" % requesting_probe_id)
-            return "500 - Unknown Probe", 500
+            # Remove the "probe" name entries, we dont need to send those        
+            database_tmp[group][remote_id]["tags"].pop("probe_name", None)   
+            database_tmp[group][remote_id]["tags"].pop("probe_shortname", None)   
 
         logging.debug(database_tmp[group])
         return render_template("config.yaml.j2", template_data=database_tmp[group])
