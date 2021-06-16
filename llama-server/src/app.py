@@ -209,8 +209,8 @@ def api_config(group):
             database_tmp[group][remote_id]["tags"]["group"] = group
 
             # Remove the "probe" name entries, we dont need to send those        
-            database_tmp[group][remote_id]["tags"].pop("probe_name", None)   
-            database_tmp[group][remote_id]["tags"].pop("probe_shortname", None)   
+            #database_tmp[group][remote_id]["tags"].pop("probe_name", None)   
+            #database_tmp[group][remote_id]["tags"].pop("probe_shortname", None)   
 
         logging.debug(database_tmp[group])
         return render_template("config.yaml.j2", template_data=database_tmp[group])
