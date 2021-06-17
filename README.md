@@ -105,7 +105,7 @@ smcline06/llama-probe:latest
 docker run --restart unless-stopped -d \
 -e LLAMA_SERVER=http://llama.packetpals.com:8105 \
 -e LLAMA_KEEPALIVE=300 \
--e "LLAMA_TAGS=[source: some_github_source, hostname: somehostname]" \
+-e "LLAMA_TAGS=[probe_shortname: gh1, probe_name: somehostname]" \
 --name llama-client \
 smcline06/llama-client:arm7-latest
 
