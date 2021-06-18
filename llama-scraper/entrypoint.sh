@@ -21,7 +21,7 @@ echo "InfluxDB Name: $INFLUXDB_NAME"
 echo "Host List: $collector_hosts_new"
 
 echo "Starting Scraper"
-scraper -llama.collector-hosts $collector_hosts_new -llama.collector-port 8100 -llama.influxdb-host $INFLUXDB_HOST -llama.influxdb-name $INFLUXDB_NAME -llama.influxdb-port $INFLUXDB_PORT -llama.interval 10
+scraper -llama.collector-hosts $collector_hosts_new -llama.collector-port 8100 -llama.influxdb-host $INFLUXDB_HOST -llama.influxdb-name $INFLUXDB_NAME -llama.influxdb-port $INFLUXDB_PORT -llama.interval 10 &
 
 echo "~~~ Config Checking Loop ~~~"
 while true
@@ -33,10 +33,6 @@ do
   collector_hosts_new=`curl -s $server_url`
 
   scraper_pid=`ps -A -o pid,cmd | grep scraper | grep -v grep | head -n 1 | awk '{print $1}'`
-
-  echo "DEBUG Old Host List: $collector_hosts"
-  echo "DEBUG New Host List: $collector_hosts_new"
-  echo "DEBUG Scraper PID: $scraper_pid"
 
   if [ -z "$scraper_pid" ]; then
     echo "Scraper process is not running! Restarting..."
