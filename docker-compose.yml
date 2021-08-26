@@ -27,8 +27,8 @@ services:
     container_name: llama-scraper-dev
     hostname: llama-scraper-dev
     environment:
-      - LLAMA_SERVER=http://10.1.0.47
-      - INFLUXDB_HOST=10.1.0.47
+      - LLAMA_SERVER=http://localhost
+      - INFLUXDB_HOST=localhost
       - INFLUXDB_PORT=8086
       - INFLUXDB_DB=llama
     depends_on:
@@ -52,7 +52,7 @@ services:
     container_name: llama-client-dev
     hostname: llama-client-dev
     environment:
-      - LLAMA_SERVER=http://10.1.0.47
+      - LLAMA_SERVER=http://localhost
       - LLAMA_KEEPALIVE=300
       - LLAMA_GROUP=default
       - "LLAMA_TAGS=[probe_shortname: dev1, probe_name: localhost]"
@@ -73,7 +73,7 @@ services:
     container_name: llama-probe-dev
     hostname: llama-probe-dev
     environment:
-      - LLAMA_SERVER=http://10.1.0.47
+      - LLAMA_SERVER=http://localhost
       - LLAMA_GROUP=default
       - LLAMA_PORT=8100
 #      - LLAMA_SOURCE_IP=127.0.0.10

@@ -58,6 +58,7 @@ thread_lock = threading.Lock()
 # Initialize global dictionaries
 database = {}
 metrics = {}
+scraperdb = {}
 
 # Expected JSON schema for registering a probe
 schema = {
@@ -137,6 +138,29 @@ def api_list_all():
     return jsonify(database), 200
 
 
+# A route to return a list of keys (listening ports) for the scaper to hit
+@app.route('/api/v2/scraper', methods=['GET'])
+def api_v2_scraper():
+    ports = []
+    # Cycle through all groups to formulate a list
+    for port in scraperdb:
+        ports.append(port)
+    logging.debug("Scraper Port List: %s" % ports)
+
+    # If list is empty, no hosts have joined, return 0
+    if len(ports) == 0:
+        ports.append(0)
+
+    # Turn the host LIST into a comma separated string
+    joined_string = ",".join(ports)
+
+    return render_template("scraper_ports.j2", ports=joined_string)
+
+# A route to return a list of keys (listening ports) for the scaper to hit
+@app.route('/api/v2/scraper/<port>', methods=['GET'])
+def api_v2_scraperhosts():
+    return 200
+
 # A route to return a list of hosts that the scraper will collect from
 @app.route('/api/v1/scraper', methods=['GET'])
 def api_scraper():
@@ -146,7 +170,6 @@ def api_scraper():
         for host in database[group]:
             hosts.append(database[group][host]['ip'])
     logging.debug("Scraper Host List: %s" % hosts)
-
 
     # If list is empty, no hosts have joined, return 127.0.0.1
     if len(hosts) == 0:
@@ -158,11 +181,30 @@ def api_scraper():
     return render_template("scraper.j2", hosts=joined_string)
 
 
+# Debugging entry to show scraper database
+@app.route('/api/v1/debug/scraperdb', methods=['GET'])
+def api_debug_scraperdb():
+    logging.debug("scraperdb = %s" % scraperdb)
+    return jsonify(scraperdb),200
+
+
+# Debugging entry to show probe database
+@app.route('/api/v1/debug/database', methods=['GET'])
+def api_debug_database():
+    logging.debug("database = %s" % database)
+    return jsonify(database),200
+
+
+# Debugging entry to show metrics database
+@app.route('/api/v1/debug/metrics', methods=['GET'])
+def api_debug_metrics():
+    logging.debug("metrics = %s" % metrics)
+    return jsonify(metrics),200
+
+
 # A route to return LLAMA Collector config file via template
 @app.route('/api/v1/config/<group>', methods=['GET'])
 def api_config(group):
-    # Create a temporary database for data manipulation, we dont want this perm
-    #database_tmp = database.copy()
     # Apparently thread safe way to perform a full database copy (not shadow)
     database_tmp = json.loads(json.dumps(database))
 
@@ -236,7 +278,10 @@ def create_date():
     return {'create_date': datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')}
 
 
-# Background process that removes stale entries
+# Background process that:
+#  - removes stale entries
+#  - formulate dictionary that groups hosts to the same port for Scraper processing.
+#  - crunch metrics
 def clean_stale_probes():
     # Run every 60 seconds
     while(not sleep(60)):
@@ -289,6 +334,20 @@ def clean_stale_probes():
             # Remove empty groups from global database
             for item in remove_group_list:
                 database.pop(item, None)
+
+            # Combine hosts to ports dic[port] = [host1, host2]
+            global scraperdb
+            scraperdb = {}
+
+            for group in database:
+                for probe in database[group]:
+
+                    # If port key is not defined, add it
+                    if database[group][probe]["port"] not in scraperdb:
+                        scraperdb[database[group][probe]["port"]] = []
+
+                    scraperdb[database[group][probe]["port"]].append(database[group][probe]["ip"])
+            logging.debug("ScraperDB = %s" % scraperdb)
 
             # Lets collect and crunch some metrics here
             global metrics

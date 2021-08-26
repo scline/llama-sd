@@ -18,10 +18,12 @@ collector_hosts=$collector_hosts_new
 echo "InfluxDB Host: $INFLUXDB_HOST"
 echo "InfluxDB Port: $INFLUXDB_PORT"
 echo "InfluxDB Name: $INFLUXDB_NAME"
+echo "LLAMA Port: $LLAMA_PORT"
+echo "LLAMA Interval: $LLAMA_INTERVAL"
 echo "Host List: $collector_hosts_new"
 
 echo "Starting Scraper"
-scraper -llama.collector-hosts $collector_hosts_new -llama.collector-port 8100 -llama.influxdb-host $INFLUXDB_HOST -llama.influxdb-name $INFLUXDB_NAME -llama.influxdb-port $INFLUXDB_PORT -llama.interval 10 &
+scraper -llama.collector-hosts $collector_hosts_new -llama.collector-port $LLAMA_PORT -llama.influxdb-host $INFLUXDB_HOST -llama.influxdb-name $INFLUXDB_NAME -llama.influxdb-port $INFLUXDB_PORT -llama.interval $LLAMA_INTERVAL &
 
 echo "~~~ Config Checking Loop ~~~"
 while true
@@ -36,7 +38,7 @@ do
 
   if [ -z "$scraper_pid" ]; then
     echo "Scraper process is not running! Restarting..."
-    scraper -llama.collector-hosts $collector_hosts_new -llama.collector-port 8100 -llama.influxdb-host $INFLUXDB_HOST -llama.influxdb-name $INFLUXDB_NAME -llama.influxdb-port $INFLUXDB_PORT  -llama.interval 10 &
+    scraper -llama.collector-hosts $collector_hosts_new -llama.collector-port $LLAMA_PORT -llama.influxdb-host $INFLUXDB_HOST -llama.influxdb-name $INFLUXDB_NAME -llama.influxdb-port $INFLUXDB_PORT  -llama.interval $LLAMA_INTERVAL &
   fi
 
   # If (running ISNOTEQUALTO temp)
@@ -47,7 +49,7 @@ do
 
     # Kill running scaper for updated targets
     kill -9 `ps -A -o pid,cmd | grep collector | grep -v grep | head -n 1 | awk '{print $1}'`
-    scraper -llama.collector-hosts $collector_hosts_new -llama.collector-port 8100 -llama.influxdb-host $INFLUXDB_HOST -llama.influxdb-name $INFLUXDB_NAME -llama.influxdb-port $INFLUXDB_PORT  -llama.interval 10 &
+    scraper -llama.collector-hosts $collector_hosts_new -llama.collector-port $LLAMA_PORT  -llama.influxdb-host $INFLUXDB_HOST -llama.influxdb-name $INFLUXDB_NAME -llama.influxdb-port $INFLUXDB_PORT  -llama.interval $LLAMA_INTERVAL &
  
    # Update new list
     collector_hosts=$collector_hosts_new
