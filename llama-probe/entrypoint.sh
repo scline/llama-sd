@@ -12,10 +12,17 @@ fi
 echo "SERVER: $LLAMA_SERVER"
 echo "GROUP: $LLAMA_GROUP"
 echo "PORT: $LLAMA_PORT"
+echo "KEEPALIVE: $LLAMA_KEEPALIVE"
+echo "PROBE NAME: $PROBE_NAME"
+echo "PROBE SHORTNAME: $PROBE_SHORTNAME"
 echo "Config URL: $server_url"
 
 echo "Starting Reflector"
 reflector -port 8100 &
+
+# Run registration GoLang script
+echo "Register Probe"
+go run register.go
 
 # Grab a new configuration from the server
 echo "Waiting 10 seconds before pulling a config file..."
@@ -34,6 +41,9 @@ collector -llama.config config.yaml &
 echo "~~~ Config Checking Loop ~~~"
 while true
 do
+  # Run registration GoLang script
+  go run register.go
+
   # Sleep for 30 seconds, do this first so we dont have issues at startup
   sleep 30
 
