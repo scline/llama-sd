@@ -56,9 +56,6 @@ Example of what one of these payloads looks like
 - `INFLUXDB_PORT` - InfluxDB listening port
 - `LLAMA_SERVER` - URL of LLAMA Server endpoint for gathering host list. i.e. `http://llama.somehost.com:8081`
 
-### LLAMA-CLIENT
-Docker container that contains a Python3 script for probe registration. Every 60 seconds it will send the LLAMA-Server an updated with relivant information reguarding the probe it speaks for. 
-
 #### Groups
 You can have miltiple groupts of probes to one server. Assigning  a group name of `BareMetal` vs `WAN` for example. All nodes in the WAN group will full-mesh test against each other while the `BareMetal` group will do the same for probes registered as such. This allows segmentation and future scaling considerations.
 ![enter image description here](https://github.com/scline/llama-sd/blob/master/docs/groups.png) 
@@ -78,6 +75,9 @@ Docker container that contains two LLAMA components created by Dropbox. LLAMA-Re
 #### Environment Variables
 - `LLAMA_SERVER` - URL of LLAMA Server endpoint for gathering host list. i.e. `http://llama.somehost.com:8081`
 - `LLAMA_GROUP` - Group name of probe, optional
+- `LLAMA_KEEPALIVE` - How long should the cluster ping if probe is unreachable in seconds
+- `PROBE_NAME` - Generally a hostname that is tagged on metrics
+- `PROVE_SHORTNAME` - Shorter name (i.e. pdx1 for a datacenter in Portland or usw2_1 for an AWS location)
 
 ## Instalation
 Installation via Docker containers is going to be the simplest way. This will work for x86 or ARM-based systems like the Raspberry Pi.
@@ -85,17 +85,12 @@ Installation via Docker containers is going to be the simplest way. This will wo
 ### Copy-Paste Probe install (Linux)
 ```
 docker run --restart unless-stopped -d \
--e LLAMA_SERVER=http://llama.packetpals.com:8105 \
--e LLAMA_KEEPALIVE=300 \
--e "LLAMA_TAGS=[source: some_github_source, hostname: somehostname]" \
---name llama-client \
-smcline06/llama-client:latest
-
-docker run --restart unless-stopped -d \
 -p 8100:8100/tcp \
 -p 8100:8100/udp \
 -e LLAMA_SERVER=http://llama.packetpals.com:8105 \
 -e LLAMA_GROUP=github \
+-e PROBE_NAME=Long_Hostname \
+-e PROBE_SHORTNAME=gh1 \
 --name llama-probe \
 smcline06/llama-probe:latest
 ```
@@ -103,17 +98,12 @@ smcline06/llama-probe:latest
 ### Copy-Paste Probe install (Raspberry Pi)
 ```
 docker run --restart unless-stopped -d \
--e LLAMA_SERVER=http://llama.packetpals.com:8105 \
--e LLAMA_KEEPALIVE=300 \
--e "LLAMA_TAGS=[probe_shortname: gh1, probe_name: somehostname]" \
---name llama-client \
-smcline06/llama-client:arm7-latest
-
-docker run --restart unless-stopped -d \
 -p 8100:8100/tcp \
 -p 8100:8100/udp \
 -e LLAMA_SERVER=http://llama.packetpals.com:8105 \
 -e LLAMA_GROUP=github \
+-e PROBE_NAME=Long_Hostname \
+-e PROBE_SHORTNAME=gh1 \
 --name llama-probe \
 smcline06/llama-probe:arm7-latest
 ```
