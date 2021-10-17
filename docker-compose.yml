@@ -10,10 +10,10 @@ services:
     container_name: llama-server-dev
     hostname: llama-server-dev
     ports:
-      - "80:80"
+      - "8080:8080"
     environment:
       - APP_HOST=0.0.0.0
-      - APP_PORT=80
+      - APP_PORT=8080
       - APP_GROUP=none
       - APP_KEEPALIVE=86400
       - APP_VERBOSE=True
@@ -27,8 +27,8 @@ services:
     container_name: llama-scraper-dev
     hostname: llama-scraper-dev
     environment:
-      - LLAMA_SERVER=http://10.1.0.47
-      - INFLUXDB_HOST=10.1.0.47
+      - LLAMA_SERVER=http://192.168.118.154:8080
+      - INFLUXDB_HOST=192.168.118.154
       - INFLUXDB_PORT=8086
       - INFLUXDB_DB=llama
     depends_on:
@@ -43,25 +43,6 @@ services:
     environment:
       - INFLUXDB_DB=llama
 
-
-  llama-client-dev:
-    build: 
-      context: ./llama-client
-      dockerfile: ./Dockerfile
-    network_mode: host
-    container_name: llama-client-dev
-    hostname: llama-client-dev
-    environment:
-      - LLAMA_SERVER=http://10.1.0.47
-      - LLAMA_KEEPALIVE=300
-      - LLAMA_GROUP=default
-      - "LLAMA_TAGS=[probe_shortname: dev1, probe_name: localhost]"
-#      - LLAMA_SOURCE_IP=127.0.0.10
-      - APP_VERBOSE=True
-      - TZ=America/Los_Angeles
-    depends_on:
-      - "llama-server-dev"
-
   
   llama-probe-dev:
     build: 
@@ -73,10 +54,12 @@ services:
     container_name: llama-probe-dev
     hostname: llama-probe-dev
     environment:
-      - LLAMA_SERVER=http://10.1.0.47
+      - LLAMA_SERVER=http://192.168.118.154:8080
       - LLAMA_GROUP=default
       - LLAMA_PORT=8100
+      - LLAMA_KEEPALIVE=301
+      - PROBE_SHORTNAME=dev1
+      - PROBE_NAME=localhost
 #      - LLAMA_SOURCE_IP=127.0.0.10
     depends_on:
-      - "llama-client-dev"
       - "llama-server-dev"

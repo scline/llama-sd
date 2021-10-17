@@ -22,14 +22,6 @@ docker build $PWD/llama-server -t smcline06/llama-server:${tag}latest
 docker push smcline06/llama-server:${tag}${version}
 docker push smcline06/llama-server:${tag}latest
 
-# Build client
-version=`cat $PWD/llama-client/version`
-docker build $PWD/llama-client -t smcline06/llama-client:${tag}${version}
-docker build $PWD/llama-client -t smcline06/llama-client:${tag}latest
-
-docker push smcline06/llama-client:${tag}${version}
-docker push smcline06/llama-client:${tag}latest
-
 # Build scraper
 version=`cat $PWD/llama-scraper/version`
 docker build $PWD/llama-scraper -t smcline06/llama-scraper:${tag}${version}
