@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"lamoid/alpaca"
 	"log"
 
@@ -11,8 +12,8 @@ func main() {
 	var llama alpaca.LamoidEnv
 
 	_, err := env.UnmarshalFromEnviron(&llama)
-	if err != nil || err == env.ErrUnexportedField {
-		log.Fatalf("[ENV-ERR]: There was a problem with one or more expected environment")
+	if err != nil || errors.Is(err, env.ErrUnexportedField) {
+		log.Fatalf("[ENV-ERR]: There was a problem with one or more expected environment: %s", err)
 	}
 
 	llama.Graze()
