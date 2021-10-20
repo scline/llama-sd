@@ -13,13 +13,16 @@ type PayLoad struct {
 	Group string `json:"group,omitempty"`
 }
 
-// GrazingEnv struct containing the running environment information
+// LamoidEnv struct containing the running environment information
 // for the grazzing llama probe.
-type GrazingEnv struct {
+type LamoidEnv struct {
 	Server         string `env:LLAMA_SERVER`
 	Group          string `env:LLAMA_GROUP`
 	Port           uint32 `env:LLAMA_PORT`
 	KeepAlive      uint32 `env:LLAMA_KEEPALIVE`
 	ProbeName      string `env:PROBE_NAME`
 	ProbeShortName string `env:PROBE_SHORTNAME`
+	ServerURL      string
+	ReflectorPID   uint32
+	CollectorPID   uint32
 }

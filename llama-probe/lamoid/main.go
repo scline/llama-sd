@@ -2,13 +2,18 @@ package main
 
 import (
 	"lamoid/alpaca"
+	"log"
 
 	env "github.com/Netflix/go-env"
 )
 
 func main() {
-	var environment alpaca.GrazingEnv
+	var llama alpaca.LamoidEnv
 
-	es, err := env.UnmarshalFromEnviron(&environment)
+	_, err := env.UnmarshalFromEnviron(&llama)
+	if err != nil || err == env.ErrUnexportedField {
+		log.Fatalf("[ENV-ERR]: There was a problem with one or more expected environment")
+	}
 
+	llama.Graze()
 }
