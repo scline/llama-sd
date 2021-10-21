@@ -6,14 +6,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"time"
 )
-
-func (g *LamoidEnv) ValidateEnvironment() {
-	// Validate Server Configuration
-}
 
 func (g *LamoidEnv) StartReflector() {
 	// Start llama reflector and update the process id ref.
@@ -50,9 +47,14 @@ func (g *LamoidEnv) GrazeAnatomy() {
 		log.Println(err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/register", g.ServerURL)
+	//Might as well validate that the string is a URL since its comming from the
+	//Deployment Environment
+	serverURL, err := url.ParseRequestURI(fmt.Sprintf("%s/api/v1/register", g.ServerURL))
+	if err != nil {
+		log.Fatalf("[GRAZE-URL]: The url constructed for the http client was not a valid URI, check LLAMA_SERVER env, %s", err)
+	}
 
-	request, err := http.NewRequest("POST", url, bytes.NewBuffer(byteArray))
+	request, err := http.NewRequest("POST", serverURL.String(), bytes.NewBuffer(byteArray))
 
 	if err != nil {
 		log.Printf("[GRAZE-CLIENT]: There was a problem creating a new request object, %s", err)
@@ -91,11 +93,6 @@ func (g *LamoidEnv) GetConfig() {
 
 func (g *LamoidEnv) ValidateConfig() {
 	// Validate Running config Against Fetched config
-}
-
-func (g *LamoidEnv) NewServerUrl() {
-	// Construct Server URL update Env ref.
-
 }
 
 func (g *LamoidEnv) Graze() {
