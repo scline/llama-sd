@@ -87,14 +87,23 @@ func (g *LamoidEnv) StartCollector() {
 	// Start llama collector and update the process id ref.
 }
 
-func (g *LamoidEnv) GetConfig() {
+func (g *LamoidEnv) GrazeConfig() {
 	// Fetch Config write to yaml on local host
-}
-
-func (g *LamoidEnv) ValidateConfig() {
-	// Validate Running config Against Fetched config
 }
 
 func (g *LamoidEnv) Graze() {
 	// Main Loop for running the llama-probe
+
+	//Initial Run
+	g.StartReflector()
+	g.GrazeAnatomy()
+
+	//Give the LLama sometime to eat....sheeeeeeshhhh
+	time.Sleep(time.Second * 10)
+
+	g.GrazeConfig()
+	g.StartCollector()
+
+	// Do Loop Stuff Later
+
 }
