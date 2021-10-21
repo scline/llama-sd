@@ -91,6 +91,10 @@ func (g *LamoidEnv) GrazeConfig() {
 	// Fetch Config write to yaml on local host
 }
 
+func (g *LamoidEnv) ValidateConfig() {
+	// Validate Running config Against Fetched config
+}
+
 func (g *LamoidEnv) Graze() {
 	// Main Loop for running the llama-probe
 
