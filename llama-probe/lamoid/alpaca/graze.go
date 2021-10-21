@@ -1,11 +1,29 @@
 package alpaca
 
+import (
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+)
+
 func (g *LamoidEnv) ValidateEnvironment() {
 	// Validate Server Configuration
 }
 
 func (g *LamoidEnv) StartReflector() {
 	// Start llama reflector and update the process id ref.
+	reflector := exec.Command("reflector", fmt.Sprintf("-port %v", g.Port))
+
+	reflector.Stdout = os.Stdout
+
+	err := reflector.Start()
+
+	if err != nil {
+		log.Fatalf("[LLAMA-REFLECTOR]: There was an error starting the reflector, %s", err)
+	}
+
+	g.ReflectorPID = uint32(reflector.Process.Pid)
 }
 
 func (g *LamoidEnv) StartCollector() {
