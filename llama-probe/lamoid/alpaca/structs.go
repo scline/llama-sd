@@ -27,3 +27,54 @@ type LamoidEnv struct {
 	ReflectorPID   int
 	CollectorPID   int
 }
+
+// YAML Config Strongly Typed
+type LLamaConfig struct {
+	Summarization struct {
+		Interval int `yaml:"interval"`
+		Handlers int `yaml:"handlers"`
+	} `yaml:"summarization"`
+	API struct {
+		Bind string `yaml:"bind"`
+	} `yaml:"api"`
+	Ports struct {
+		Default struct {
+			IP      string `yaml:"ip"`
+			Port    int    `yaml:"port"`
+			Tos     int    `yaml:"tos"`
+			Timeout int    `yaml:"timeout"`
+		} `yaml:"default"`
+	} `yaml:"ports"`
+	PortGroups struct {
+		Default []struct {
+			Port  string `yaml:"port"`
+			Count int    `yaml:"count"`
+		} `yaml:"default"`
+	} `yaml:"port_groups"`
+	RateLimits struct {
+		Default struct {
+			Cps float64 `yaml:"cps"`
+		} `yaml:"default"`
+	} `yaml:"rate_limits"`
+	Tests []struct {
+		Targets   string `yaml:"targets"`
+		PortGroup string `yaml:"port_group"`
+		RateLimit string `yaml:"rate_limit"`
+	} `yaml:"tests"`
+	Targets struct {
+		Default []struct {
+			IP   string `yaml:"ip"`
+			Port int    `yaml:"port"`
+			Tags struct {
+				Version        string `yaml:"version"`
+				ProbeShortname string `yaml:"probe_shortname"`
+				ProbeName      string `yaml:"probe_name"`
+				DstName        string `yaml:"dst_name"`
+				DstShortname   string `yaml:"dst_shortname"`
+				SrcName        string `yaml:"src_name"`
+				SrcShortname   string `yaml:"src_shortname"`
+				Group          string `yaml:"group"`
+			} `yaml:"tags"`
+		} `yaml:"default"`
+	} `yaml:"targets"`
+}
