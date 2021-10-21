@@ -23,6 +23,6 @@ type LamoidEnv struct {
 	ProbeName      string `env:PROBE_NAME`
 	ProbeShortName string `env:PROBE_SHORTNAME`
 	ServerURL      string
-	ReflectorPID   uint32
-	CollectorPID   uint32
+	ReflectorPID   int
+	CollectorPID   int
 }

@@ -23,7 +23,7 @@ func (g *LamoidEnv) StartReflector() {
 		log.Fatalf("[LLAMA-REFLECTOR]: There was an error starting the reflector, %s", err)
 	}
 
-	g.ReflectorPID = uint32(reflector.Process.Pid)
+	g.ReflectorPID = reflector.Process.Pid
 }
 
 func (g *LamoidEnv) StartCollector() {
