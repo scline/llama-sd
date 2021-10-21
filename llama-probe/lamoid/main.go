@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+
 	var llama alpaca.LamoidEnv
 
 	_, err := env.UnmarshalFromEnviron(&llama)
