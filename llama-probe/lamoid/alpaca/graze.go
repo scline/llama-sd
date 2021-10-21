@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 func (g *LamoidEnv) StartReflector() {
@@ -89,6 +93,45 @@ func (g *LamoidEnv) StartCollector() {
 
 func (g *LamoidEnv) GrazeConfig() {
 	// Fetch Config write to yaml on local host
+	configReqURL, err := url.ParseRequestURI(fmt.Sprintf("%s/api/v1/config/%s", g.ServerURL, g.Group))
+	if err != nil {
+		log.Fatalf("[CONFIG-URL]: The url constructed for the http client was not a valid URI, check LLAMA_SERVER & LLAMA_GROUP env, %s", err)
+	}
+
+	configReqParam := url.Values{}
+	configReqParam.Add("llamaport", fmt.Sprintf("%v", g.Port))
+
+	request, err := http.NewRequest("GET", configReqURL.String(), strings.NewReader(configReqParam.Encode()))
+	if err != nil {
+		log.Printf("[CONFIG-CLIENT]: There was a problem creating a new request object, %s", err)
+	}
+
+	client := &http.Client{
+		Timeout: time.Second * 5,
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		log.Printf("[CONFIG-CLIENT]: There was a problem making a request to LLAMA Server, %s", err)
+	}
+
+	defer func() {
+		err := response.Body.Close()
+
+		if err != nil {
+			log.Printf("[CONFIG-CLIENT]: There was a problem closing the config response from LLAMA Server, %s", err)
+		}
+	}()
+
+	respBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Printf("[CONFIG-CLIENT]: There was a problem reading the config response from LLAMA_SERVER, %s", err)
+	}
+
+	configRaw := LLamaConfig{}
+
+	ymlErr := yaml.Unmarshal(respBytes, &configRaw)
+
 }
 
 func (g *LamoidEnv) ValidateConfig() {

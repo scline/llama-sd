@@ -8,6 +8,8 @@ import (
 	env "github.com/Netflix/go-env"
 )
 
+//TODO: Pass HTTP Client to methods
+
 func main() {
 
 	var llama alpaca.LamoidEnv
