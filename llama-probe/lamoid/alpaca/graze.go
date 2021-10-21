@@ -128,9 +128,26 @@ func (g *LamoidEnv) GrazeConfig() {
 		log.Printf("[CONFIG-CLIENT]: There was a problem reading the config response from LLAMA_SERVER, %s", err)
 	}
 
+	//Need to really play around with this to see if we can preserve the YAML formatting
+	//returned from LLAMA
 	configRaw := LLamaConfig{}
 
-	ymlErr := yaml.Unmarshal(respBytes, &configRaw)
+	yamlErr := yaml.Unmarshal(respBytes, &configRaw)
+	if yamlErr != nil {
+		log.Printf("[YAML-ERR]: There was a problem reading the raw configuration, %s", err)
+	}
+
+	yamlData, err := yaml.Marshal(&configRaw)
+	if err != nil {
+		log.Printf("[YAML-ERR]: There was a problem searializing YAML data into bytes, %s", err)
+	}
+
+	//Write configuration to local node
+	ioErr := ioutil.WriteFile("config.yaml", yamlData, 0644)
+
+	if ioErr != nil {
+		log.Fatalf("[IO-CONFIG]: There was a problem writing data to the config file, %s", ioErr)
+	}
 
 }
 
