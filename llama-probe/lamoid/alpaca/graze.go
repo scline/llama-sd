@@ -39,36 +39,46 @@ func (g *LamoidEnv) GrazeAnatomy() {
 		Group:     g.Group,
 	}
 
+	//TODO: Read in version number at compile, add to LamoidEnv struct
+	//so its available to all methods.
 	lamoidAnatomy.Tags.Version = "0.1.0"
 	lamoidAnatomy.Tags.ProbeName = g.ProbeName
 	lamoidAnatomy.Tags.ProbeShortname = g.ProbeShortName
 
-	// Convert PayLoad struct to JSON now that we have all our values.
 	byteArray, err := json.Marshal(lamoidAnatomy)
 	if err != nil {
 		log.Println(err)
 	}
 
-	// POST JSON to API Server
-	url := envs["LLAMA_SERVER"] + "/api/v1/register"
-	log.Println("Server URL:", url)
+	url := fmt.Sprintf("%s/api/v1/register", g.ServerURL)
 
-	// Print registration JSON we send to API server
-	log.Println("JSON Post:", string(byteArray))
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(byteArray))
 
-	// Loop the registration every 60 seconds
-	request, error := http.NewRequest("POST", url, bytes.NewBuffer(byteArray))
+	if err != nil {
+		log.Printf("[GRAZE-CLIENT]: There was a problem creating a new request object, %s", err)
+	}
+
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	response, error := client.Do(request)
-	if error != nil {
-		log.Println(error)
+	client := &http.Client{
+		Timeout: 5 * time.Second,
 	}
-	defer response.Body.Close()
 
-	// Log responce
-	log.Println("Response Status:", response.Status)
+	response, err := client.Do(request)
+
+	if err != nil {
+		log.Printf("[GRAZE-CLIENT]: There was a problem making a request, %s", err)
+	}
+
+	defer func() {
+		err := response.Body.Close()
+
+		if err != nil {
+			log.Printf("[GRAZE-CLIENT]: There was a problem closing the response from LLAMA Server, %s", err)
+		}
+	}()
+
+	log.Printf("Response Status: %s", response.Status)
 }
 
 func (g *LamoidEnv) StartCollector() {
