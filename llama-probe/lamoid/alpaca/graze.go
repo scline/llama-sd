@@ -55,7 +55,7 @@ func (g *LamoidEnv) GrazeAnatomy() {
 	//Deployment Environment
 	serverURL, err := url.ParseRequestURI(fmt.Sprintf("%s/api/v1/register", g.ServerURL))
 	if err != nil {
-		log.Fatalf("[GRAZE-URL]: The url constructed for the http client was not a valid URI, check LLAMA_SERVER env, %s", err)
+		log.Fatalf("[GRAZE-URL]: The url constructed was not a valid URI, check LLAMA_SERVER, %s", err)
 	}
 
 	request, err := http.NewRequest("POST", serverURL.String(), bytes.NewBuffer(byteArray))
@@ -89,13 +89,24 @@ func (g *LamoidEnv) GrazeAnatomy() {
 
 func (g *LamoidEnv) StartCollector() {
 	// Start llama collector and update the process id ref.
+	collector := exec.Command("collector", "-llama.config /opt/alpaca/config.yaml")
+
+	collector.Stdout = os.Stdout
+
+	err := collector.Start()
+
+	if err != nil {
+		log.Fatalf("[LLAMA-COLLECTOR]: There was an error starting the collector, %s", err)
+	}
+
+	g.CollectorPID = collector.Process.Pid
 }
 
 func (g *LamoidEnv) GrazeConfig() {
 	// Fetch Config write to yaml on local host
 	configReqURL, err := url.ParseRequestURI(fmt.Sprintf("%s/api/v1/config/%s", g.ServerURL, g.Group))
 	if err != nil {
-		log.Fatalf("[CONFIG-URL]: The url constructed for the http client was not a valid URI, check LLAMA_SERVER & LLAMA_GROUP env, %s", err)
+		log.Fatalf("[CONFIG-URL]: The url constructed was not a valid URI, check LLAMA_SERVER & LLAMA_GROUP , %s", err)
 	}
 
 	configReqParam := url.Values{}
@@ -143,7 +154,7 @@ func (g *LamoidEnv) GrazeConfig() {
 	}
 
 	//Write configuration to local node
-	ioErr := ioutil.WriteFile("config.yaml", yamlData, 0644)
+	ioErr := ioutil.WriteFile("/opt/alpaca/config.yaml", yamlData, 0644)
 
 	if ioErr != nil {
 		log.Fatalf("[IO-CONFIG]: There was a problem writing data to the config file, %s", ioErr)
