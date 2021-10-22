@@ -191,6 +191,64 @@ func (g *LamoidEnv) GrazeConfig() {
 
 func (g *LamoidEnv) ValidateConfig() {
 	// Validate Running config Against Fetched config
+	//Code duplication for now, will break out later after initial testing and refactoring.
+
+	// Build and validate URL
+	configReqURL, err := url.ParseRequestURI(fmt.Sprintf("%s/api/v1/config/%s", g.ServerURL, g.Group))
+	if err != nil {
+		log.Fatalf("[CONFIG-URL]: The url constructed was not a valid URI, check LLAMA_SERVER & LLAMA_GROUP , %s", err)
+	}
+
+	// Configure request url params
+	configReqParam := url.Values{}
+	configReqParam.Add("llamaport", fmt.Sprintf("%v", g.Port))
+
+	// Build request
+	request, err := http.NewRequest("GET", configReqURL.String(), strings.NewReader(configReqParam.Encode()))
+	if err != nil {
+		log.Printf("[CONFIG-CLIENT]: There was a problem creating a new request object, %s", err)
+	}
+
+	//HTTP Client
+	client := &http.Client{
+		Timeout: time.Second * 5,
+	}
+
+	// Process HTTP request
+	response, err := client.Do(request)
+	if err != nil {
+		log.Printf("[CONFIG-CLIENT]: There was a problem making a request to LLAMA Server, %s", err)
+	}
+
+	defer func() {
+		err := response.Body.Close()
+
+		if err != nil {
+			log.Printf("[CONFIG-CLIENT]: There was a problem closing the config response from LLAMA Server, %s", err)
+		}
+	}()
+
+	// Read response into bytes
+	respBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Printf("[CONFIG-CLIENT]: There was a problem reading the config response from LLAMA_SERVER, %s", err)
+	}
+
+	//Note: Need to really play around with this to see if we can preserve the YAML formatting
+	//returned from LLAMA
+
+	//Serialize YAML Data into a struct
+	configRaw := LLamaConfig{}
+
+	yamlErr := yaml.Unmarshal(respBytes, &configRaw)
+	if yamlErr != nil {
+		log.Printf("[YAML-ERR]: There was a problem reading the raw configuration, %s", err)
+	}
+
+	//TODO: Read current running config.
+	//TODO: Compare both YAML files
+	//TODO: Update Loop to stop/reload processes based on validation
+
 }
 
 func (g *LamoidEnv) Graze() {
