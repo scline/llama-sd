@@ -23,7 +23,6 @@ type LamoidEnv struct {
 	KeepAlive      int    `env:"LLAMA_KEEPALIVE"`
 	ProbeName      string `env:"PROBE_NAME"`
 	ProbeShortName string `env:"PROBE_SHORTNAME"`
-	ServerURL      string
 	ReflectorPID   int
 	CollectorPID   int
 }

@@ -34,6 +34,3 @@ docker push smcline06/llama-scraper:${tag}latest
 version=`cat $PWD/llama-probe/version`
 docker build $PWD/llama-probe -t smcline06/llama-probe:${tag}${version}
 docker build $PWD/llama-probe -t smcline06/llama-probe:${tag}latest
-
-docker push smcline06/llama-probe:${tag}${version}
-docker push smcline06/llama-probe:${tag}latest

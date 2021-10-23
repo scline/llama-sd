@@ -19,5 +19,7 @@ func main() {
 		log.Fatalf("[ENV-ERR]: There was a problem with one or more expected environment: %s", err)
 	}
 
+	log.Print(llama)
+
 	llama.Graze()
 }
