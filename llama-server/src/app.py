@@ -236,6 +236,23 @@ def create_date():
     return {'create_date': datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')}
 
 
+# Process that checks if there are duplicate probes in a group
+def is_probe_dup(group, probe):
+    for probe_compaire in database[group]:
+
+        # Ignore self entry
+        if probe == probe_compaire:
+            continue
+
+        # If two different probes habe the same shortname, return True
+        if database[group][probe]["tags"]["probe_shortname"] == database[group][probe_compaire]["tags"]["probe_shortname"]:
+            logging.error("Duplicate probe entry found in Group: '%s', ID: '%s', probe_shortname: '%s'" % (group, probe, database[group][probe]["tags"]["probe_shortname"]))
+            return True
+    
+    # No duplicates found
+    return False
+
+
 # Background process that removes stale entries
 def clean_stale_probes():
     # Run every 60 seconds
@@ -264,6 +281,10 @@ def clean_stale_probes():
                     logging.debug("Probe '%s' in group '%s' checked in %i seconds ago" % (probe, group, age))
                     if age > database[group][probe]['keepalive']:
                         logging.debug("Probe '%s' in group '%s' should be removed!" % (probe, group))
+                        remove_probe_list.append(probe)
+
+                    # If there is a duplicate entry mark for deletetion
+                    if is_probe_dup(group, probe):
                         remove_probe_list.append(probe)
             
                 # Remove old probed from global database
