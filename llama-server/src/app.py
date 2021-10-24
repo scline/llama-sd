@@ -187,6 +187,11 @@ def api_config(group):
         requesting_probe_id = "%s:%s" % (remote_ip_address, port)
         logging.debug("Config request from '%s'" % requesting_probe_id)
 
+        # Check if key not in dict python
+        if requesting_probe_id not in database_tmp[group]:
+            logging.error("Requesting probe '%s' has not registered, no config will be given" % requesting_probe_id)
+            return jsonify({'error': "unknown probe '%s', please register" % requesting_probe_id}), 404
+
         # Setup source + destination pairs per probe
         for remote_id in database_tmp[group]:
 
