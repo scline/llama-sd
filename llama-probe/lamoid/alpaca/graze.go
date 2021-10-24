@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 	"time"
 
@@ -21,6 +20,8 @@ import (
 //GrazeAnatomy - A method called on LamoidEnv which registers the current running LLAMA configuration
 //to the LLAMA-SERVER
 func (g *LamoidEnv) GrazeAnatomy() {
+
+	log.Print("[LAMOID-REGISTER]: Regestiering With LLAMA Server....")
 
 	//Build the registration Payload
 	lamoidAnatomy := &PayLoad{
@@ -75,6 +76,7 @@ func (g *LamoidEnv) GrazeAnatomy() {
 		}
 	}()
 
+	log.Print("[LAMOID-REGISTER]: Regestiering Process Completed")
 	log.Printf("[LAMOID-REGISTER]: Response Status: %s", response.Status)
 }
 
@@ -105,7 +107,7 @@ func (g *LamoidEnv) StartReflector() {
 func (g *LamoidEnv) StartCollector() {
 
 	// Build os exec command to launch colelctor with a given param
-	collector := exec.Command("collector", "-llama.config /opt/alpaca/config.yaml")
+	collector := exec.Command("collector", "-llama.config config.yaml")
 
 	// Set the process to output to Standard Out
 	collector.Stdout = os.Stdout
@@ -128,20 +130,20 @@ func (g *LamoidEnv) StartCollector() {
 func (g *LamoidEnv) GrazeConfig() []byte {
 
 	// Build and validate URL
-	configReqURL, err := url.ParseRequestURI(fmt.Sprintf("%s/api/v1/config/%s", g.Server, g.Group))
+	configReqURL, err := url.ParseRequestURI(fmt.Sprintf("%sapi/v1/config/%s", g.Server, g.Group))
 	if err != nil {
 		log.Printf("[LAMOID-URL]: The url constructed was not a valid URI, check LLAMA_SERVER & LLAMA_GROUP , %s", err)
 	}
 
-	// Configure request url params
-	configReqParam := url.Values{}
-	configReqParam.Add("llamaport", fmt.Sprintf("%v", g.Port))
-
 	// Build request
-	request, err := http.NewRequest("GET", configReqURL.String(), strings.NewReader(configReqParam.Encode()))
+	request, err := http.NewRequest("GET", configReqURL.String(), nil)
 	if err != nil {
 		log.Printf("[LAMOID-CLIENT]: There was a problem creating a new request object, %s", err)
 	}
+
+	configReqQuery := request.URL.Query()
+	configReqQuery.Add("llamaport", fmt.Sprint(g.Port))
+	request.URL.RawQuery = configReqQuery.Encode()
 
 	//HTTP Client
 	client := &http.Client{
@@ -187,25 +189,41 @@ func (g *LamoidEnv) WriteConfig(respBytes []byte) {
 		log.Printf("[LAMOID-ERR]: There was a problem searializing YAML data into bytes, %s", err)
 	}
 
-	//Write configuration to local node
-	ioErr := os.WriteFile("/opt/alpaca/config.yaml", yamlData, 0644)
-
-	if ioErr != nil {
-		log.Printf("[LAMOID-ERR]: There was a problem writing data to the config file, %s", ioErr)
+	yamlFile, err := os.Create("config.yaml")
+	if err != nil {
+		return
 	}
+
+	defer yamlFile.Close()
+
+	yamlFile.Write(yamlData)
 
 }
 
 func (g *LamoidEnv) ReadConfig() LLamaConfig {
 
+	var configRawData []byte
 	configRaw := LLamaConfig{}
 
-	yamlFile, err := os.ReadFile("/opt/alpaca/config.yaml")
+	configReader, err := os.Open("config.yaml")
 	if err != nil {
-		log.Printf("[LAMOID-ERR]: There was a problem reading the config file, %s", err)
+		log.Print("There was a problem reading config.yaml")
 	}
 
-	err = yaml.Unmarshal(yamlFile, &configRaw)
+	defer func() {
+		err := configReader.Close()
+
+		if err != nil {
+			log.Print("There was a problem closing config.yaml")
+		}
+	}()
+
+	_, readErr := configReader.Read(configRawData)
+	if readErr != nil {
+		log.Print("There was a problem reading config file to raw bytes.")
+	}
+
+	err = yaml.Unmarshal(configRawData, &configRaw)
 	if err != nil {
 		log.Printf("[LAMOID-ERR]: There was a problem reading config into type struct, %s", err)
 	}
@@ -219,20 +237,20 @@ func (g *LamoidEnv) ValidateConfig() string {
 	//Code duplication for now, will break out later after initial testing and refactoring.
 
 	// Build and validate URL
-	configReqURL, err := url.ParseRequestURI(fmt.Sprintf("%s/api/v1/config/%s", g.Server, g.Group))
+	configReqURL, err := url.ParseRequestURI(fmt.Sprintf("%sapi/v1/config/%s", g.Server, g.Group))
 	if err != nil {
-		log.Fatalf("[LAMOID-URL]: The url constructed was not a valid URI, check LLAMA_SERVER & LLAMA_GROUP , %s", err)
+		log.Printf("[LAMOID-URL]: The url constructed was not a valid URI, check LLAMA_SERVER & LLAMA_GROUP , %s", err)
 	}
 
-	// Configure request url params
-	configReqParam := url.Values{}
-	configReqParam.Add("llamaport", fmt.Sprintf("%v", g.Port))
-
 	// Build request
-	request, err := http.NewRequest("GET", configReqURL.String(), strings.NewReader(configReqParam.Encode()))
+	request, err := http.NewRequest("GET", configReqURL.String(), nil)
 	if err != nil {
 		log.Printf("[LAMOID-CLIENT]: There was a problem creating a new request object, %s", err)
 	}
+
+	configReqQuery := request.URL.Query()
+	configReqQuery.Add("llamaport", fmt.Sprint(g.Port))
+	request.URL.RawQuery = configReqQuery.Encode()
 
 	//HTTP Client
 	client := &http.Client{

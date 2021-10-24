@@ -4,7 +4,7 @@ WORKDIR /go/src/app
 
 COPY entrypoint.sh entrypoint.sh 
 COPY register.go register.go 
-COPY lamoid-graze lamoid-graze
+COPY lamoid-grazer lamoid-grazer
 
 RUN go get -d -v github.com/dropbox/llama
 RUN go install -v github.com/dropbox/llama/cmd/collector
@@ -23,4 +23,4 @@ ENV \
 EXPOSE 8100/tcp
 EXPOSE 8100/udp
 
-ENTRYPOINT [ "/go/src/app/lamoid-graze" ]
+ENTRYPOINT [ "/go/src/app/lamoid-grazer" ]

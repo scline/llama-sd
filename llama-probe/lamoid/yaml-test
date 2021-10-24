@@ -1,0 +1,150 @@
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"time"
+
+	"github.com/google/go-cmp/cmp"
+	"gopkg.in/yaml.v2"
+)
+
+type LLamaConfig struct {
+	Summarization struct {
+		Interval int `yaml:"interval"`
+		Handlers int `yaml:"handlers"`
+	} `yaml:"summarization"`
+	API struct {
+		Bind string `yaml:"bind"`
+	} `yaml:"api"`
+	Ports struct {
+		Default struct {
+			IP      string `yaml:"ip"`
+			Port    int    `yaml:"port"`
+			Tos     int    `yaml:"tos"`
+			Timeout int    `yaml:"timeout"`
+		} `yaml:"default"`
+	} `yaml:"ports"`
+	PortGroups struct {
+		Default []struct {
+			Port  string `yaml:"port"`
+			Count int    `yaml:"count"`
+		} `yaml:"default"`
+	} `yaml:"port_groups"`
+	RateLimits struct {
+		Default struct {
+			Cps float64 `yaml:"cps"`
+		} `yaml:"default"`
+	} `yaml:"rate_limits"`
+	Tests []struct {
+		Targets   string `yaml:"targets"`
+		PortGroup string `yaml:"port_group"`
+		RateLimit string `yaml:"rate_limit"`
+	} `yaml:"tests"`
+	Targets struct {
+		Default []struct {
+			IP   string `yaml:"ip"`
+			Port int    `yaml:"port"`
+			Tags struct {
+				Version        string `yaml:"version"`
+				ProbeShortname string `yaml:"probe_shortname"`
+				ProbeName      string `yaml:"probe_name"`
+				DstName        string `yaml:"dst_name"`
+				DstShortname   string `yaml:"dst_shortname"`
+				SrcName        string `yaml:"src_name"`
+				SrcShortname   string `yaml:"src_shortname"`
+				Group          string `yaml:"group"`
+			} `yaml:"tags"`
+		} `yaml:"default"`
+	} `yaml:"targets"`
+}
+
+func main() {
+	// Build and validate URL
+	configReqURL, err := url.ParseRequestURI(fmt.Sprintf("%s/api/v1/config/%s", "http://llama.packetpals.com:8105/", "scline"))
+	if err != nil {
+		log.Printf("[LAMOID-URL]: The url constructed was not a valid URI, check LLAMA_SERVER & LLAMA_GROUP , %s", err)
+	}
+
+	// Build request
+	request, err := http.NewRequest("GET", configReqURL.String(), nil)
+	if err != nil {
+		log.Printf("[LAMOID-CLIENT]: There was a problem creating a new request object, %s", err)
+	}
+
+	q := request.URL.Query()
+	q.Add("llamaport", "8100")
+	request.URL.RawQuery = q.Encode()
+
+	//HTTP Client
+	client := &http.Client{
+		Timeout: time.Second * 5,
+	}
+
+	// Process HTTP request
+	response, err := client.Do(request)
+	if err != nil {
+		log.Printf("[LAMOID-CLIENT]: There was a problem making a request to LLAMA Server, %s", err)
+	}
+
+	defer func() {
+		err := response.Body.Close()
+
+		if err != nil {
+			log.Printf("[LAMOID-CLIENT]: There was a problem closing the config response from LLAMA Server, %s", err)
+		}
+	}()
+
+	// Read response into bytes
+	respBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Printf("[LAMOID-CLIENT]: There was a problem reading the config response from LLAMA_SERVER, %s", err)
+	}
+
+	yam := LLamaConfig{}
+
+	err = yaml.Unmarshal(respBytes, &yam)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+
+	yamlData, _ := yaml.Marshal(&yam)
+
+	yamlFile, err := os.Create("config.yaml")
+	if err != nil {
+		return
+	}
+
+	defer yamlFile.Close()
+
+	yamlFile.Write(yamlData)
+
+	file, err := os.Open("config.yaml")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer file.Close()
+
+	var fileData []byte
+
+	_, ferr := file.Read(fileData)
+
+	if err != nil {
+		log.Fatal(ferr)
+	}
+
+	yam2 := LLamaConfig{}
+
+	err = yaml.Unmarshal(fileData, &yam2)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+
+	fmt.Print(cmp.Equal(yam, yam2))
+
+}
