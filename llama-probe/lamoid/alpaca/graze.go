@@ -43,7 +43,7 @@ func (g *LamoidEnv) GrazeAnatomy() {
 	//Build and Validate the LLAMA-SERVER url
 	serverURL, err := url.ParseRequestURI(fmt.Sprintf("%sapi/v1/register", g.Server))
 	if err != nil {
-		log.Printf("[LAMOID-REGISTER]: The url constructed was not a valid URI, check LLAMA_SERVER, %s", err)
+		log.Printf("[URL-ERROR]: The url constructed was not a valid URI, check LLAMA_SERVER, %s", err)
 	}
 
 	//Build the HTTP Post request
