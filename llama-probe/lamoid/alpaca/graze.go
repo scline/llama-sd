@@ -10,10 +10,10 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"reflect"
 	"syscall"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v2"
 )
 
@@ -85,10 +85,11 @@ func (g *LamoidEnv) GrazeAnatomy() {
 func (g *LamoidEnv) StartReflector() {
 
 	// Build os exec command to launch reflector with a given param
-	reflector := exec.Command("reflector", fmt.Sprintf("-port %v", g.Port))
+	reflector := exec.Command("reflector", "-port", fmt.Sprint(g.Port))
 
 	// Set the process to output to Standard Out
 	reflector.Stdout = os.Stdout
+	reflector.Stderr = os.Stderr
 
 	// Execute the exec command to start reflector, panic on error.
 	log.Print("[LAMOID]: Starting Reflector")
@@ -97,6 +98,13 @@ func (g *LamoidEnv) StartReflector() {
 	if err != nil {
 		log.Printf("[LAMOID-REFLECTOR]: There was an error starting the reflector, %s", err)
 	}
+
+	go func() {
+		err = reflector.Wait()
+		if err != nil {
+			log.Printf("[ERROR]: Reflector processed didn't close gracfully")
+		}
+	}()
 
 	//Set PID
 	g.ReflectorPID = reflector.Process.Pid
@@ -107,10 +115,11 @@ func (g *LamoidEnv) StartReflector() {
 func (g *LamoidEnv) StartCollector() {
 
 	// Build os exec command to launch colelctor with a given param
-	collector := exec.Command("collector", "-llama.config config.yaml")
+	collector := exec.Command("collector", "-llama.config", "config.yaml")
 
 	// Set the process to output to Standard Out
 	collector.Stdout = os.Stdout
+	collector.Stderr = os.Stderr
 
 	// Execute the exec command to start colelctor, panic on error.
 	log.Print("[LAMOID]: Starting Collector")
@@ -119,6 +128,13 @@ func (g *LamoidEnv) StartCollector() {
 	if err != nil {
 		log.Printf("[LAMOID-COLLECTOR]: There was an error starting the collector, %s", err)
 	}
+
+	go func() {
+		err = collector.Wait()
+		if err != nil {
+			log.Printf("[ERROR]: Collector processed didn't close gracfully")
+		}
+	}()
 
 	//Set PID
 	g.CollectorPID = collector.Process.Pid
@@ -194,7 +210,12 @@ func (g *LamoidEnv) WriteConfig(respBytes []byte) {
 		return
 	}
 
-	defer yamlFile.Close()
+	defer func() {
+		err = yamlFile.Close()
+		if err != nil {
+			log.Printf("[YAML-WRITE-ERROR]: %s", err)
+		}
+	}()
 
 	yamlFile.Write(yamlData)
 
@@ -233,59 +254,15 @@ func (g *LamoidEnv) ReadConfig() LLamaConfig {
 }
 
 func (g *LamoidEnv) ValidateConfig() string {
-	// Validate Running config Against Fetched config
-	//Code duplication for now, will break out later after initial testing and refactoring.
 
-	// Build and validate URL
-	configReqURL, err := url.ParseRequestURI(fmt.Sprintf("%sapi/v1/config/%s", g.Server, g.Group))
-	if err != nil {
-		log.Printf("[LAMOID-URL]: The url constructed was not a valid URI, check LLAMA_SERVER & LLAMA_GROUP , %s", err)
-	}
-
-	// Build request
-	request, err := http.NewRequest("GET", configReqURL.String(), nil)
-	if err != nil {
-		log.Printf("[LAMOID-CLIENT]: There was a problem creating a new request object, %s", err)
-	}
-
-	configReqQuery := request.URL.Query()
-	configReqQuery.Add("llamaport", fmt.Sprint(g.Port))
-	request.URL.RawQuery = configReqQuery.Encode()
-
-	//HTTP Client
-	client := &http.Client{
-		Timeout: time.Second * 5,
-	}
-
-	// Process HTTP request
-	response, err := client.Do(request)
-	if err != nil {
-		log.Printf("[LAMOID-CLIENT]: There was a problem making a request to LLAMA Server, %s", err)
-	}
-
-	defer func() {
-		err := response.Body.Close()
-
-		if err != nil {
-			log.Printf("[LAMOID-CLIENT]: There was a problem closing the config response from LLAMA Server, %s", err)
-		}
-	}()
-
-	// Read response into bytes
-	respBytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Printf("[LAMOID-CLIENT]: There was a problem reading the config response from LLAMA_SERVER, %s", err)
-	}
-
-	//Note: Need to really play around with this to see if we can preserve the YAML formatting
-	//returned from LLAMA
+	respBytes := g.GrazeConfig()
 
 	//Serialize YAML Data into a struct
 	newConfigRaw := LLamaConfig{}
 
 	yamlErr := yaml.Unmarshal(respBytes, &newConfigRaw)
 	if yamlErr != nil {
-		log.Printf("[LAMOID-ERR]: There was a problem reading the raw configuration from llama server, %s", err)
+		log.Printf("[LAMOID-ERR]: There was a problem reading the raw configuration from llama server, %s", yamlErr)
 	}
 
 	//TODO: Read current running config. Validate
@@ -294,12 +271,11 @@ func (g *LamoidEnv) ValidateConfig() string {
 	//TODO: Compare both YAML files Validate
 	var lamoidAction string
 
-	if !cmp.Equal(currentConfigRaw, newConfigRaw) {
-		log.Printf("[LAMOID-INFO]: New Configuration Detected")
-		lamoidAction = "Update"
-	} else {
-		log.Printf("[LAMOID-INFO]: No Configuration Detected")
+	switch reflect.DeepEqual(newConfigRaw, currentConfigRaw) {
+	case true:
 		lamoidAction = "Continue"
+	case false:
+		lamoidAction = "Update"
 	}
 
 	return lamoidAction
@@ -327,6 +303,7 @@ Graze:
 	for {
 		switch g.ValidateConfig() {
 		case "Continue":
+			time.Sleep(time.Second * 30)
 			continue Graze
 		case "Update":
 			log.Printf("[LAMOID-INFO]: Stoping Collector")
