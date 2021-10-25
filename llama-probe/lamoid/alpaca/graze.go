@@ -2,6 +2,7 @@ package alpaca
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,11 +11,10 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"reflect"
 	"syscall"
 	"time"
 
-	"gopkg.in/yaml.v2"
+	"github.com/google/go-cmp/cmp"
 )
 
 //GrazeAnatomy - A method called on LamoidEnv which registers the current running LLAMA configuration
@@ -107,6 +107,7 @@ func (g *LamoidEnv) StartReflector() {
 	}()
 
 	//Set PID
+	log.Printf("[REFLECTOR-PID]: %v", reflector.Process.Pid)
 	g.ReflectorPID = reflector.Process.Pid
 }
 
@@ -137,6 +138,7 @@ func (g *LamoidEnv) StartCollector() {
 	}()
 
 	//Set PID
+	log.Printf("[COLLECTOR-PID]: %v", collector.Process.Pid)
 	g.CollectorPID = collector.Process.Pid
 }
 
@@ -192,19 +194,6 @@ func (g *LamoidEnv) GrazeConfig() []byte {
 
 func (g *LamoidEnv) WriteConfig(respBytes []byte) {
 
-	//Serialize YAML Data into a struct
-	configRaw := LLamaConfig{}
-
-	yamlErr := yaml.Unmarshal(respBytes, &configRaw)
-	if yamlErr != nil {
-		log.Printf("[LAMOID-ERR]: There was a problem reading the raw configuration, %s", yamlErr)
-	}
-
-	yamlData, err := yaml.Marshal(&configRaw)
-	if err != nil {
-		log.Printf("[LAMOID-ERR]: There was a problem searializing YAML data into bytes, %s", err)
-	}
-
 	yamlFile, err := os.Create("config.yaml")
 	if err != nil {
 		return
@@ -217,14 +206,17 @@ func (g *LamoidEnv) WriteConfig(respBytes []byte) {
 		}
 	}()
 
-	yamlFile.Write(yamlData)
+	_, writeErr := yamlFile.Write(respBytes)
+
+	if writeErr != nil {
+		log.Printf("[YAML-WRITE-ERROR]: %s", err)
+	}
 
 }
 
-func (g *LamoidEnv) ReadConfig() LLamaConfig {
+func (g *LamoidEnv) ReadConfig() []byte {
 
 	var configRawData []byte
-	configRaw := LLamaConfig{}
 
 	configReader, err := os.Open("config.yaml")
 	if err != nil {
@@ -244,41 +236,21 @@ func (g *LamoidEnv) ReadConfig() LLamaConfig {
 		log.Print("There was a problem reading config file to raw bytes.")
 	}
 
-	err = yaml.Unmarshal(configRawData, &configRaw)
-	if err != nil {
-		log.Printf("[LAMOID-ERR]: There was a problem reading config into type struct, %s", err)
-	}
-
-	return configRaw
+	return configRawData
 
 }
 
-func (g *LamoidEnv) ValidateConfig() string {
+func (g *LamoidEnv) ValidateConfig() bool {
 
-	respBytes := g.GrazeConfig()
+	newConfig := md5.Sum(g.GrazeConfig())
 
-	//Serialize YAML Data into a struct
-	newConfigRaw := LLamaConfig{}
+	currentConfig := md5.Sum(g.ReadConfig())
 
-	yamlErr := yaml.Unmarshal(respBytes, &newConfigRaw)
-	if yamlErr != nil {
-		log.Printf("[LAMOID-ERR]: There was a problem reading the raw configuration from llama server, %s", yamlErr)
-	}
+	log.Printf("[NEW-CONFIG]: Hash - %s", fmt.Sprint(newConfig))
+	log.Printf("[OLD-CONFIG]: Hash - %s", fmt.Sprint(currentConfig))
 
-	//TODO: Read current running config. Validate
-	currentConfigRaw := g.ReadConfig()
+	return cmp.Equal(newConfig, currentConfig)
 
-	//TODO: Compare both YAML files Validate
-	var lamoidAction string
-
-	switch reflect.DeepEqual(newConfigRaw, currentConfigRaw) {
-	case true:
-		lamoidAction = "Continue"
-	case false:
-		lamoidAction = "Update"
-	}
-
-	return lamoidAction
 }
 
 func (g *LamoidEnv) StartGrazing() {
@@ -297,21 +269,25 @@ func (g *LamoidEnv) StartGrazing() {
 func (g *LamoidEnv) Graze() {
 	// Main Loop for running the llama-probe
 
+	//TODO: Better Process Management for Collector and reflector
+	//TODO: Figure out how to compare the configs, hashes always come out different.
+
 	g.StartGrazing()
 
 Graze:
 	for {
 		switch g.ValidateConfig() {
-		case "Continue":
+		case true:
 			time.Sleep(time.Second * 30)
 			continue Graze
-		case "Update":
-			log.Printf("[LAMOID-INFO]: Stoping Collector")
+		case false:
+			log.Printf("[LAMOID-INFO]: New Config - Stoping Collector")
 
 			err := syscall.Kill(g.CollectorPID, syscall.SIGHUP)
 			if err != nil {
 				log.Printf("[LAMOID-ERR]: There was a problem trying to send SIGHUP to collector process, %s", err)
 			}
+			time.Sleep(time.Second * 10)
 
 			log.Printf("[LAMOID-INFO]: Grazing Registration")
 
