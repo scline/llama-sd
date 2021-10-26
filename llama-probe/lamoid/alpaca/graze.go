@@ -214,11 +214,33 @@ func (g *LamoidEnv) WriteConfig(respBytes []byte) {
 
 }
 
-func (g *LamoidEnv) ReadConfig() []byte {
+func (g *LamoidEnv) WriteTempConfig(respBytes []byte) {
+
+	yamlFile, err := os.Create("tmp-config.yaml")
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		err = yamlFile.Close()
+		if err != nil {
+			log.Printf("[YAML-WRITE-ERROR]: %s", err)
+		}
+	}()
+
+	_, writeErr := yamlFile.Write(respBytes)
+
+	if writeErr != nil {
+		log.Printf("[YAML-WRITE-ERROR]: %s", err)
+	}
+
+}
+
+func (g *LamoidEnv) ReadConfig(configFile string) []byte {
 
 	var configRawData []byte
 
-	configReader, err := os.Open("config.yaml")
+	configReader, err := os.Open(configFile)
 	if err != nil {
 		log.Print("There was a problem reading config.yaml")
 	}
@@ -242,9 +264,11 @@ func (g *LamoidEnv) ReadConfig() []byte {
 
 func (g *LamoidEnv) ValidateConfig() bool {
 
-	newConfig := md5.Sum(g.GrazeConfig())
+	g.WriteTempConfig(g.GrazeConfig())
 
-	currentConfig := md5.Sum(g.ReadConfig())
+	newConfig := md5.Sum(g.ReadConfig("tmp-config.yaml"))
+
+	currentConfig := md5.Sum(g.ReadConfig("config.yaml"))
 
 	log.Printf("[NEW-CONFIG]: Hash - %s", fmt.Sprint(newConfig))
 	log.Printf("[OLD-CONFIG]: Hash - %s", fmt.Sprint(currentConfig))
@@ -276,9 +300,9 @@ func (g *LamoidEnv) Graze() {
 
 Graze:
 	for {
+		time.Sleep(time.Second * 30)
 		switch g.ValidateConfig() {
 		case true:
-			time.Sleep(time.Second * 30)
 			continue Graze
 		case false:
 			log.Printf("[LAMOID-INFO]: New Config - Stoping Collector")
