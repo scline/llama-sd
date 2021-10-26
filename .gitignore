@@ -130,3 +130,6 @@ dmypy.json
 
 # MacOS junk
 *.DS_Store
+
+#Local Build
+/llama-probe/lamoid-grazer

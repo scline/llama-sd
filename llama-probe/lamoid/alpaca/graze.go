@@ -17,6 +17,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+//TODO: Better Process Management for Collector and Reflector
+//TODO: Pass HTTP Client to methods
+//TODO: CLI Flag to control config check interval
+//TODO: Unit Testing
+//TODO: Documentation
+
 //GrazeAnatomy - A method called on LamoidEnv which registers the current running LLAMA configuration
 //to the LLAMA-SERVER
 func (g *LamoidEnv) GrazeAnatomy() {
@@ -294,10 +300,6 @@ func (g *LamoidEnv) StartGrazing() {
 
 func (g *LamoidEnv) Graze() {
 	// Main Loop for running the llama-probe
-	//TODO: Better Process Management for Collector and Reflector
-	//TODO: CLI Flag to control config check interval
-	//TODO: Unit Testing
-	//TODO: Documentation
 	g.StartGrazing()
 
 Graze:
