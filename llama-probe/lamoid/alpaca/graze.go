@@ -273,6 +273,8 @@ func (g *LamoidEnv) ValidateConfig() bool {
 	log.Printf("[NEW-CONFIG]: Hash - %s", fmt.Sprint(newConfig))
 	log.Printf("[OLD-CONFIG]: Hash - %s", fmt.Sprint(currentConfig))
 
+	os.Remove("tmp-config.yaml")
+
 	return cmp.Equal(newConfig, currentConfig)
 
 }
@@ -292,10 +294,10 @@ func (g *LamoidEnv) StartGrazing() {
 
 func (g *LamoidEnv) Graze() {
 	// Main Loop for running the llama-probe
-
-	//TODO: Better Process Management for Collector and reflector
-	//TODO: Figure out how to compare the configs, hashes always come out different.
-
+	//TODO: Better Process Management for Collector and Reflector
+	//TODO: CLI Flag to control config check interval
+	//TODO: Unit Testing
+	//TODO: Documentation
 	g.StartGrazing()
 
 Graze:
@@ -307,6 +309,7 @@ Graze:
 		case false:
 			log.Printf("[LAMOID-INFO]: New Config - Stoping Collector")
 
+			//TODO: This doesn't work like I expected it to.....  ¯\_(ツ)_/¯
 			err := syscall.Kill(g.CollectorPID, syscall.SIGHUP)
 			if err != nil {
 				log.Printf("[LAMOID-ERR]: There was a problem trying to send SIGHUP to collector process, %s", err)
