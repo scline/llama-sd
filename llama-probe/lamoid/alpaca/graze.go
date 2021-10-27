@@ -19,9 +19,11 @@ import (
 
 //TODO: Better Process Management for Collector and Reflector
 //TODO: Pass HTTP Client to methods
+//TODO: Clean up functions that don't need to be a method and move them some place else.
 //TODO: CLI Flag to control config check interval
 //TODO: Unit Testing
 //TODO: Documentation
+//TODO: Be less comedic with the naming.....
 
 //GrazeAnatomy - A method called on LamoidEnv which registers the current running LLAMA configuration
 //to the LLAMA-SERVER
