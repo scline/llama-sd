@@ -1,5 +1,7 @@
 package alpaca
 
+import "os/exec"
+
 // Create struct for JSON we send to the server for registration
 type PayLoad struct {
 	Port      int    `json:"port"`
@@ -23,11 +25,11 @@ type LamoidEnv struct {
 	KeepAlive      int    `env:"LLAMA_KEEPALIVE"`
 	ProbeName      string `env:"PROBE_NAME"`
 	ProbeShortName string `env:"PROBE_SHORTNAME"`
-	ReflectorPID   int
-	CollectorPID   int
+	Reflector      *exec.Cmd
+	Collector      *exec.Cmd
 }
 
-// YAML Config Strongly Typed
+// YAML Config Strongly Typed Maybe we can use this one day.....
 type LLamaConfig struct {
 	Summarization struct {
 		Interval int `yaml:"interval"`

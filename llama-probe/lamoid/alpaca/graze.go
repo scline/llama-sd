@@ -17,8 +17,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-//TODO: Better Process Management for Collector and Reflector
-//TODO: Pass HTTP Client to methods
+//TODO: Refactor HTTP Client usage
 //TODO: Clean up functions that don't need to be a method and move them some place else.
 //TODO: CLI Flag to control config check interval
 //TODO: Unit Testing
@@ -29,7 +28,7 @@ import (
 //to the LLAMA-SERVER
 func (g *LamoidEnv) GrazeAnatomy() {
 
-	log.Print("[LAMOID-REGISTER]: Regestiering With LLAMA Server....")
+	log.Printf("[LAMOID-REGISTER]: Performing Registration with LLAMA Server %s", g.Server)
 
 	//Build the registration Payload
 	lamoidAnatomy := &PayLoad{
@@ -89,7 +88,7 @@ func (g *LamoidEnv) GrazeAnatomy() {
 }
 
 //StartReflector - A method called on LamoidEnv which starts the LLAMA Reflector application and updates LamoidEnv with
-//its OS process identification (PID)
+//its process.
 func (g *LamoidEnv) StartReflector() {
 
 	// Build os exec command to launch reflector with a given param
@@ -107,6 +106,7 @@ func (g *LamoidEnv) StartReflector() {
 		log.Printf("[LAMOID-REFLECTOR]: There was an error starting the reflector, %s", err)
 	}
 
+	//Wait in go routine
 	go func() {
 		err = reflector.Wait()
 		if err != nil {
@@ -114,9 +114,8 @@ func (g *LamoidEnv) StartReflector() {
 		}
 	}()
 
-	//Set PID
 	log.Printf("[REFLECTOR-PID]: %v", reflector.Process.Pid)
-	g.ReflectorPID = reflector.Process.Pid
+	g.Reflector = reflector
 }
 
 //StartCollector - A method called on LamoidEnv which starts the LLAMA Collector application and updates LamoidEnv with
@@ -138,6 +137,7 @@ func (g *LamoidEnv) StartCollector() {
 		log.Printf("[LAMOID-COLLECTOR]: There was an error starting the collector, %s", err)
 	}
 
+	//Wait in go routine
 	go func() {
 		err = collector.Wait()
 		if err != nil {
@@ -145,13 +145,12 @@ func (g *LamoidEnv) StartCollector() {
 		}
 	}()
 
-	//Set PID
 	log.Printf("[COLLECTOR-PID]: %v", collector.Process.Pid)
-	g.CollectorPID = collector.Process.Pid
+	g.Collector = collector
 }
 
 //GrazeConfig - A method called on LamoidEnv which retrieves the running configuration from the LLAMA Servers configuration
-//API. Writes that config as a YAML to the local node for consumption by the collector process. Must be ran before the
+//API and returns []byte object used to write the configuration to local node. Must be ran before the
 //collector is started.
 func (g *LamoidEnv) GrazeConfig() []byte {
 
@@ -200,6 +199,7 @@ func (g *LamoidEnv) GrazeConfig() []byte {
 
 }
 
+//WriteConfig - Accept []bytes that will be written to the local node as config.yaml
 func (g *LamoidEnv) WriteConfig(respBytes []byte) {
 
 	yamlFile, err := os.Create("config.yaml")
@@ -222,6 +222,7 @@ func (g *LamoidEnv) WriteConfig(respBytes []byte) {
 
 }
 
+//WriteTempConfig - Accept []bytes that will be written to the local node as tmp-config.yaml
 func (g *LamoidEnv) WriteTempConfig(respBytes []byte) {
 
 	yamlFile, err := os.Create("tmp-config.yaml")
@@ -244,6 +245,7 @@ func (g *LamoidEnv) WriteTempConfig(respBytes []byte) {
 
 }
 
+//ReadConfig - Read the local configuration file, used to compare new and old config.
 func (g *LamoidEnv) ReadConfig(configFile string) []byte {
 
 	var configRawData []byte
@@ -270,6 +272,7 @@ func (g *LamoidEnv) ReadConfig(configFile string) []byte {
 
 }
 
+//ValidateConfig - Validates the new and current running config via MD5 Hash.
 func (g *LamoidEnv) ValidateConfig() bool {
 
 	g.WriteTempConfig(g.GrazeConfig())
@@ -287,6 +290,7 @@ func (g *LamoidEnv) ValidateConfig() bool {
 
 }
 
+//StartGrazing - Get ya Graze on LLAMA.....
 func (g *LamoidEnv) StartGrazing() {
 	//Initial Run
 	g.StartReflector()
@@ -300,41 +304,39 @@ func (g *LamoidEnv) StartGrazing() {
 	g.StartCollector()
 }
 
+//Graze - Why you are here.
 func (g *LamoidEnv) Graze() {
 	// Main Loop for running the llama-probe
 	g.StartGrazing()
 
 Graze:
 	for {
-		time.Sleep(time.Second * 30)
+		log.Printf("[LAMOID-INFO]: Polling Config")
+		time.Sleep(time.Second * 60)
 		switch g.ValidateConfig() {
 		case true:
 			continue Graze
 		case false:
-			log.Printf("[LAMOID-INFO]: New Config - Stoping Collector")
+			log.Printf("[LAMOID-INFO]: New Config Detected - Reloading Collector")
 
-			//TODO: This doesn't work like I expected it to.....  ¯\_(ツ)_/¯
-			err := syscall.Kill(g.CollectorPID, syscall.SIGHUP)
-			if err != nil {
-				log.Printf("[LAMOID-ERR]: There was a problem trying to send SIGHUP to collector process, %s", err)
-			}
-			time.Sleep(time.Second * 10)
-
-			log.Printf("[LAMOID-INFO]: Grazing Registration")
+			log.Printf("[LAMOID-INFO]: Updating LLAMA SERVER Registration")
 
 			g.GrazeAnatomy()
 
 			log.Printf("[LAMOID-INFO]: Writing New Config")
+
 			time.Sleep(time.Second * 10)
 
 			g.WriteConfig(g.GrazeConfig())
 
-			log.Printf("[LAMOID-INFO]: Starting New Collector")
-			g.StartCollector()
+			log.Printf("[LAMOID-INFO]: Reloading Collector with new config")
 
-			time.Sleep(time.Second * 30)
+			err := g.Collector.Process.Signal(syscall.SIGHUP)
+			if err != nil {
+				log.Printf("[LAMOID-ERR]: There was a problem trying to send SIGHUP to collector process, %s", err)
+			}
+
 			continue Graze
 		}
 	}
-
 }
