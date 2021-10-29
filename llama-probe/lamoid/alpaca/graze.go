@@ -315,6 +315,7 @@ Graze:
 		time.Sleep(time.Second * 60)
 		switch g.ValidateConfig() {
 		case true:
+			g.GrazeAnatomy()
 			continue Graze
 		case false:
 			log.Printf("[LAMOID-INFO]: New Config Detected - Reloading Collector")
