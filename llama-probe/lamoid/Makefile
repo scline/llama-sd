@@ -1,0 +1,2 @@
+build-lamoid:
+	GOOS=linux GOARCH=amd64 go build -o ../lamoid-grazer
