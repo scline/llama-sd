@@ -2,8 +2,7 @@ FROM golang:1.13
 
 WORKDIR /go/src/app
 
-copy entrypoint.sh entrypoint.sh 
-copy register.go register.go 
+COPY lamoid-grazer /usr/local/bin/lamoid-grazer
 
 RUN go get -d -v github.com/dropbox/llama
 RUN go install -v github.com/dropbox/llama/cmd/collector
@@ -22,4 +21,4 @@ ENV \
 EXPOSE 8100/tcp
 EXPOSE 8100/udp
 
-CMD ["bash", "-c", "bash entrypoint.sh"]
+ENTRYPOINT [ "lamoid-grazer" ]
