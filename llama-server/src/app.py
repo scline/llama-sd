@@ -26,7 +26,7 @@ if not config.host:
 if not config.port:
     config.port = "5000"
 if not config.interval:
-    config.interval = 60
+    config.interval = 10
 
 # Set logging levels
 if config.verbose:
