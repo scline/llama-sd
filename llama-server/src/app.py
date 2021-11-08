@@ -13,6 +13,7 @@ p.add('-g', '--group', required=False, help='default group name', env_var='APP_G
 p.add('-i', '--host', required=False, help='listening web ip', env_var='APP_HOST')
 p.add('-k', '--keepalive', required=False, type=int, help='default keepalive value in seconds', env_var='APP_KEEPALIVE')
 p.add('-p', '--port', required=False, help='listening web port', env_var='APP_PORT')
+p.add('--interval', required=False, type=int, help='llama collection interval in seconds', env_var='LLAMA_INTERVAL')
 p.add('-v', '--verbose', help='verbose logging', action='store_true', env_var='APP_VERBOSE')
 
 config = p.parse_args()
@@ -24,6 +25,8 @@ if not config.host:
     config.host = "127.0.0.1"
 if not config.port:
     config.port = "5000"
+if not config.interval:
+    config.interval = 60
 
 # Set logging levels
 if config.verbose:
@@ -218,7 +221,7 @@ def api_config(group):
             #database_tmp[group][remote_id]["tags"].pop("probe_shortname", None)   
 
         logging.debug(database_tmp[group])
-        return render_template("config.yaml.j2", template_data=database_tmp[group])
+        return render_template("config.yaml.j2", template_data=database_tmp[group], template_interval=config.interval)
 
     # If group is not located, error
     logging.error("'/api/v1/config/%s' - Unknown group" % group)

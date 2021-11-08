@@ -4,7 +4,7 @@
 # Controls how often test results are aggregated/summarized.
 # Only the latest summary is kept and available via the API.
 summarization:
-    interval:   10
+    interval:   {{ template_interval }}
     handlers:   2
 
 # Controls how the summarized data exposed in the REST API

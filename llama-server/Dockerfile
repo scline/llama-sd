@@ -22,6 +22,7 @@ ENV \
 #    APP_VERBOSE=False \
 #    APP_GROUP="none" \
 #    APP_KEEPALIVE=86400 \
+#    LLAMA_INTERVAL=10 \
 #    APP_VERBOSE=True
 
 # Expose webport

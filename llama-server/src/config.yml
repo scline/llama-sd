@@ -19,6 +19,11 @@ keepalive: 86400
 group: default
 
 
+### LLAMA Settings ###
+# How often should the scraper pull data and collector summarize in seconds.
+interval: 10
+
+
 ### Application Debugging ###
 
 # Debug logging level, True or False
