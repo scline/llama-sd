@@ -4,7 +4,7 @@
 # Controls how often test results are aggregated/summarized.
 # Only the latest summary is kept and available via the API.
 summarization:
-    interval:   10
+    interval:   {{ template_interval }}
     handlers:   2
 
 # Controls how the summarized data exposed in the REST API
@@ -27,7 +27,7 @@ ports:
 port_groups:
     default:
         - port:     default
-          count:    2
+          count:    4
 
 # Used by tests to limit the rate at which probes are sent.
 # `cps` is cycles per second and defines the number of probes
@@ -39,7 +39,7 @@ port_groups:
 # per second).
 rate_limits:
     default:
-        cps:    3.0
+        cps:    2.0
 
 # Define how, where, and how many probes a collector should
 # be sending. Tests combine the other configuration attributes
