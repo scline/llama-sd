@@ -100,6 +100,11 @@ def my_ip_address():
     return jsonify({'ip': request.remote_addr}), 200
 
 
+# Interval metric
+@app.route("/api/v1/interval", methods=['GET'])
+def interval():
+    return str(config.interval), 200
+
 # Registration endpoint
 @app.route("/api/v1/register", methods=['POST'])
 @expects_json(schema, fill_defaults=True)
