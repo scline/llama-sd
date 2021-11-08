@@ -26,6 +26,10 @@ collector_array=(`echo $collector_hosts | tr ',' ' '`)
 echo "Collector Host List:  ${collector_array[@]}"
 echo "Collector Host Count: ${#collector_array[@]}"
 
+# Grab interval metric from API server
+interval="`curl -s $LLAMA_SERVER/api/v1/interval`"
+echo "Collector Interval: $interval"
+
 echo "Starting Scraper"
 for i in "${collector_array[@]}"
 do
@@ -38,7 +42,7 @@ do
 
   # Run scraper thread (one per IP endpoint) 
   # Need to run multiple since it appears the scraper app does not timeout or multi-thread collection. Means one dead probe can stop collection entirely.
-  scraper -llama.collector-hosts $i -llama.collector-port 8100 -llama.influxdb-host $INFLUXDB_HOST -llama.influxdb-name $INFLUXDB_NAME -llama.influxdb-port $INFLUXDB_PORT -llama.interval 10 &
+  scraper -llama.collector-hosts $i -llama.collector-port 8100 -llama.influxdb-host $INFLUXDB_HOST -llama.influxdb-name $INFLUXDB_NAME -llama.influxdb-port $INFLUXDB_PORT -llama.interval $interval &
 done
 
 echo """
