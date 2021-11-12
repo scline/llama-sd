@@ -2,7 +2,7 @@
 version="1.0.3"
 
 # Custom environment settings
-if [[ -z "${MESOS}" ]]; then
+if [[ "$MESOS" ]]; then
   echo "MESOS Option Selected!"
   export PROBE_NAME=$MESOS_CONTAINER_IP
   export PROBE_SHORTNAME=$HOST
