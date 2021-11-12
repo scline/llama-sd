@@ -17,7 +17,7 @@ ENV \
     LLAMA_PORT=8100 \
     LLAMA_KEEPALIVE=300 \
     #LLAMA_SOURCE_IP=10.0.0.1 \
-    LLAMA_GROUP="default" 
+    LLAMA_GROUP="default"
 
 EXPOSE 8100/tcp
 EXPOSE 8100/udp
