@@ -1,5 +1,5 @@
 #!/bin/bash
-version="1.0.3"
+version="1.0.4"
 
 # Custom environment settings
 if [[ "$MESOS" ]]; then
@@ -14,7 +14,10 @@ server_url="$LLAMA_SERVER/api/v1/config/$LLAMA_GROUP?llamaport=$LLAMA_PORT"
 registration_url="$LLAMA_SERVER/api/v1/register"
 
 # Stitch source IP variable to URL if provided
-if [ "$LLAMA_SOURCE_IP" ]; then
+# https://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash/16753536
+if [ -z ${LLAMA_SOURCE_IP+x} ]; then
+  echo "Source IP is not set, will be set by the server on registration."
+else
   echo "Probe wants to report its own IP as $LLAMA_SOURCE_IP"
   server_url="$server_url&srcip=$LLAMA_SOURCE_IP"
 fi
@@ -32,17 +35,31 @@ echo "Registration Version: $version"
 echo "Starting Reflector"
 reflector -port 8100 &
 
-# Run registration GoLang script
-echo "Register Probe"
-curl -s -X POST $registration_url -H 'Content-Type: application/json' -d "$(cat <<EOF
+# Run registration 
+if [ -z ${LLAMA_SOURCE_IP+x} ]; then
+  echo "Register Probe"
+  curl -s -X POST $registration_url -H 'Content-Type: application/json' -d "$(cat <<EOF
 { "port": $LLAMA_PORT, "keepalive": $LLAMA_KEEPALIVE, "tags": { "version": "$version", "probe_shortname": "$PROBE_SHORTNAME", "probe_name": "$PROBE_NAME" }, "group": "$LLAMA_GROUP" } 
 EOF
 )" > /dev/null
 
-echo "Registration Payload: $(cat <<EOF
+  echo "Registration Payload: $(cat <<EOF
 { "port": $LLAMA_PORT, "keepalive": $LLAMA_KEEPALIVE, "tags": { "version": "$version", "probe_shortname": "$PROBE_SHORTNAME", "probe_name": "$PROBE_NAME" }, "group": "$LLAMA_GROUP" } 
 EOF
 )"
+
+else
+  echo "Register Probe w/source IP"
+  curl -s -X POST $registration_url -H 'Content-Type: application/json' -d "$(cat <<EOF
+{ "port": $LLAMA_PORT, "keepalive": $LLAMA_KEEPALIVE, "ip": $LLAMA_SOURCE_IP, "tags": { "version": "$version", "probe_shortname": "$PROBE_SHORTNAME", "probe_name": "$PROBE_NAME" }, "group": "$LLAMA_GROUP" } 
+EOF
+)" > /dev/null
+
+  echo "Registration Payload: $(cat <<EOF
+{ "port": $LLAMA_PORT, "keepalive": $LLAMA_KEEPALIVE, "ip": $LLAMA_SOURCE_IP, "tags": { "version": "$version", "probe_shortname": "$PROBE_SHORTNAME", "probe_name": "$PROBE_NAME" }, "group": "$LLAMA_GROUP" } 
+EOF
+)"
+fi
 
 # Registration golang script spikes CPU enough to affact latancy on low-CPU environments.
 #go run register.go
@@ -67,11 +84,19 @@ collector -llama.config config.yaml &
 echo "~~~ Config Checking Loop ~~~"
 while true
 do
-  # Register
-  curl -s -X POST $registration_url -H 'Content-Type: application/json' -d "$(cat <<EOF
+  if [ -z ${LLAMA_SOURCE_IP+x} ]; then
+    # Register, no source IP
+    curl -s -X POST $registration_url -H 'Content-Type: application/json' -d "$(cat <<EOF
 { "port": $LLAMA_PORT, "keepalive": $LLAMA_KEEPALIVE, "tags": { "version": "$version", "probe_shortname": "$PROBE_SHORTNAME", "probe_name": "$PROBE_NAME" }, "group": "$LLAMA_GROUP" } 
 EOF
 )" > /dev/null
+  else
+    # Register with source IP
+    curl -s -X POST $registration_url -H 'Content-Type: application/json' -d "$(cat <<EOF
+{ "port": $LLAMA_PORT, "keepalive": $LLAMA_KEEPALIVE, "ip": $LLAMA_SOURCE_IP, "tags": { "version": "$version", "probe_shortname": "$PROBE_SHORTNAME", "probe_name": "$PROBE_NAME" }, "group": "$LLAMA_GROUP" } 
+EOF
+)" > /dev/null
+fi
 
   # Registration golang script spikes CPU enough to affact latancy on low-CPU environments.
   #go run register.go
