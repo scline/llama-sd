@@ -26,7 +26,7 @@ import (
 
 //GrazeAnatomy - A method called on LamoidEnv which registers the current running LLAMA configuration
 //to the LLAMA-SERVER
-func (g *LamoidEnv) GrazeAnatomy() {
+func (g *LamoidEnv) GrazeAnatomy() error {
 
 	log.Printf("[LAMOID-REGISTER]: Performing Registration with LLAMA Server %s", g.Server)
 
@@ -52,6 +52,7 @@ func (g *LamoidEnv) GrazeAnatomy() {
 	serverURL, err := url.ParseRequestURI(fmt.Sprintf("%sapi/v1/register", g.Server))
 	if err != nil {
 		log.Printf("[URL-ERROR]: The url constructed was not a valid URI, check LLAMA_SERVER, %s", err)
+		return err
 	}
 
 	//Build the HTTP Post request
@@ -59,6 +60,7 @@ func (g *LamoidEnv) GrazeAnatomy() {
 
 	if err != nil {
 		log.Printf("[LAMOID-REGISTER]: There was a problem creating a new request object, %s", err)
+		return err
 	}
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
@@ -73,6 +75,7 @@ func (g *LamoidEnv) GrazeAnatomy() {
 
 	if err != nil {
 		log.Printf("[LAMOID-REGISTER]: There was a problem making a request, %s", err)
+		return err
 	}
 
 	defer func() {
@@ -85,6 +88,8 @@ func (g *LamoidEnv) GrazeAnatomy() {
 
 	log.Print("[LAMOID-REGISTER]: Regestiering Process Completed")
 	log.Printf("[LAMOID-REGISTER]: Response Status: %s", response.Status)
+
+	return nil
 }
 
 //StartReflector - A method called on LamoidEnv which starts the LLAMA Reflector application and updates LamoidEnv with
@@ -152,18 +157,20 @@ func (g *LamoidEnv) StartCollector() {
 //GrazeConfig - A method called on LamoidEnv which retrieves the running configuration from the LLAMA Servers configuration
 //API and returns []byte object used to write the configuration to local node. Must be ran before the
 //collector is started.
-func (g *LamoidEnv) GrazeConfig() []byte {
+func (g *LamoidEnv) GrazeConfig() ([]byte, error) {
 
 	// Build and validate URL
 	configReqURL, err := url.ParseRequestURI(fmt.Sprintf("%sapi/v1/config/%s", g.Server, g.Group))
 	if err != nil {
 		log.Printf("[LAMOID-URL]: The url constructed was not a valid URI, check LLAMA_SERVER & LLAMA_GROUP , %s", err)
+		return nil, err
 	}
 
 	// Build request
 	request, err := http.NewRequest("GET", configReqURL.String(), nil)
 	if err != nil {
 		log.Printf("[LAMOID-CLIENT]: There was a problem creating a new request object, %s", err)
+		return nil, err
 	}
 
 	configReqQuery := request.URL.Query()
@@ -179,6 +186,7 @@ func (g *LamoidEnv) GrazeConfig() []byte {
 	response, err := client.Do(request)
 	if err != nil {
 		log.Printf("[LAMOID-CLIENT]: There was a problem making a request to LLAMA Server, %s", err)
+		return nil, err
 	}
 
 	defer func() {
@@ -193,9 +201,10 @@ func (g *LamoidEnv) GrazeConfig() []byte {
 	respBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		log.Printf("[LAMOID-CLIENT]: There was a problem reading the config response from LLAMA_SERVER, %s", err)
+		return nil, err
 	}
 
-	return respBytes
+	return respBytes, nil
 
 }
 
@@ -275,7 +284,19 @@ func (g *LamoidEnv) ReadConfig(configFile string) []byte {
 //ValidateConfig - Validates the new and current running config via MD5 Hash.
 func (g *LamoidEnv) ValidateConfig() bool {
 
-	g.WriteTempConfig(g.GrazeConfig())
+	var config []byte
+
+	for {
+		configBytes, err := g.GrazeConfig()
+		if err != nil {
+			log.Printf("[CONFIG-ERROR]: There was and Error getting the config, %s", err)
+			continue
+		}
+		config = configBytes
+		break
+	}
+
+	g.WriteTempConfig(config)
 
 	newConfig := md5.Sum(g.ReadConfig("tmp-config.yaml"))
 
@@ -292,14 +313,39 @@ func (g *LamoidEnv) ValidateConfig() bool {
 
 //StartGrazing - Get ya Graze on LLAMA.....
 func (g *LamoidEnv) StartGrazing() {
+
+	var config []byte
+
 	//Initial Run
 	g.StartReflector()
-	g.GrazeAnatomy()
+
+	log.Print("[LAMOID-INIT]: Waiting for Llama Server....")
+
+	for {
+		err := g.GrazeAnatomy()
+		if err != nil {
+			log.Printf("[LAMOID-INIT]: Registration Failed. Error - %s", err)
+			log.Print("[LAMOID-INIT]: Trying Again....")
+			time.Sleep(time.Second * 10)
+			continue
+		}
+		break
+	}
 
 	//Give the LLama sometime to eat....sheeeeeeshhhh
 	time.Sleep(time.Second * 10)
 
-	g.WriteConfig(g.GrazeConfig())
+	for {
+		configBytes, err := g.GrazeConfig()
+		if err != nil {
+			log.Printf("[CONFIG-ERROR]: There was and Error getting the config, %s", err)
+			continue
+		}
+		config = configBytes
+		break
+	}
+
+	g.WriteConfig(config)
 
 	g.StartCollector()
 }
@@ -311,24 +357,55 @@ func (g *LamoidEnv) Graze() {
 
 Graze:
 	for {
-		log.Printf("[LAMOID-INFO]: Polling Config")
 		time.Sleep(time.Second * 60)
+		log.Printf("[LAMOID-INFO]: Polling Config")
 		switch g.ValidateConfig() {
 		case true:
-			g.GrazeAnatomy()
+			for {
+				err := g.GrazeAnatomy()
+				if err != nil {
+					log.Printf("[LAMOID-INIT]: Registration Failed. Error - %s", err)
+					log.Print("[LAMOID-INIT]: Trying Again....")
+					time.Sleep(time.Second * 10)
+					continue
+				}
+				break
+			}
 			continue Graze
 		case false:
+
+			var config []byte
+
 			log.Printf("[LAMOID-INFO]: New Config Detected - Reloading Collector")
 
 			log.Printf("[LAMOID-INFO]: Updating LLAMA SERVER Registration")
 
-			g.GrazeAnatomy()
+			for {
+				err := g.GrazeAnatomy()
+				if err != nil {
+					log.Printf("[LAMOID-INIT]: Registration Failed. Error - %s", err)
+					log.Print("[LAMOID-INIT]: Trying Again....")
+					time.Sleep(time.Second * 10)
+					continue
+				}
+				break
+			}
 
 			log.Printf("[LAMOID-INFO]: Writing New Config")
 
 			time.Sleep(time.Second * 10)
 
-			g.WriteConfig(g.GrazeConfig())
+			for {
+				configBytes, err := g.GrazeConfig()
+				if err != nil {
+					log.Printf("[CONFIG-ERROR]: There was and Error getting the config, %s", err)
+					continue
+				}
+				config = configBytes
+				break
+			}
+
+			g.WriteConfig(config)
 
 			log.Printf("[LAMOID-INFO]: Reloading Collector with new config")
 
