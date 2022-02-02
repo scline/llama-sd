@@ -97,13 +97,17 @@ def get_metrics():
 # Returns IP address of requester, for finding NAT/Public address in the future
 @app.route("/api/v1/my_ip_address", methods=['GET'])
 def my_ip_address():
-    return jsonify({'ip': request.remote_addr}), 200
+    if request.headers.getlist("X-Forwarded-For"):
+        return jsonify({'ip': request.headers.getlist("X-Forwarded-For")[0]}), 200
+    else:
+        return jsonify({'ip': request.remote_addr}), 200
 
 
 # Interval metric
 @app.route("/api/v1/interval", methods=['GET'])
 def interval():
     return str(config.interval), 200
+
 
 # Registration endpoint
 @app.route("/api/v1/register", methods=['POST'])
@@ -116,8 +120,11 @@ def add_entry():
 
     # If IP address was not set, try to figure out what it should be. "If key NOT IN dict"
     if not request_json.get('ip'):
-        # Add requestor IP address to the json data
-        request_json.update({'ip': '%s' % request.remote_addr})
+        # Add requestor IP address to the json data, If X-Forwarded is present use that
+        if request.headers.getlist("X-Forwarded-For"):
+            request_json.update({'ip': '%s' % request.headers.getlist("X-Forwarded-For")[0]})
+        else:
+            request_json.update({'ip': '%s' % request.remote_addr})
 
     # Formulate probe ID by "IP:Port", ex: "192.168.1.12:8100"
     request_json.update({'id': '%s:%s' % (request_json['ip'], request_json['port'])})
