@@ -1,7 +1,8 @@
-import json, flask, threading, logging, configargparse
+import json, flask, socket, threading, logging, configargparse
 
 from flask import request, jsonify, render_template, send_file
 from flask_expects_json import expects_json
+from influxdb import InfluxDBClient
 from datetime import datetime
 from pympler import asizeof
 from time import sleep
@@ -14,6 +15,9 @@ p.add('-i', '--host', required=False, help='listening web ip', env_var='APP_HOST
 p.add('-k', '--keepalive', required=False, type=int, help='default keepalive value in seconds', env_var='APP_KEEPALIVE')
 p.add('-p', '--port', required=False, help='listening web port', env_var='APP_PORT')
 p.add('--interval', required=False, type=int, help='llama collection interval in seconds', env_var='LLAMA_INTERVAL')
+p.add('--influxdb-host', required=False, help='InfluxDB Hostname', env_var='INFLUXDB_HOST')
+p.add('--influxdb-port', required=False, type=int, help='InfluxDB Port', env_var='INFLUXDB_PORT')
+p.add('--influxdb-name', required=False, help='InfluxDB Name, defaults to "enphase"', env_var='INFLUXDB_NAME')
 p.add('-v', '--verbose', help='verbose logging', action='store_true', env_var='APP_VERBOSE')
 
 config = p.parse_args()
@@ -27,6 +31,13 @@ if not config.port:
     config.port = "5000"
 if not config.interval:
     config.interval = 10
+
+# Set defaults for InfluxDB settings
+if config.influxdb_host:
+    if not config.influxdb_port:
+        config.influxdb_port = 8086
+    if not config.influxdb_name:
+        config.influxdb_name = "llama"
 
 # Set logging levels
 if config.verbose:
@@ -346,18 +357,97 @@ def clean_stale_probes():
             metrics["group_count_active"] = len(database)
             metrics["group_count_removed"] = len(remove_group_list)
             metrics["database_size_bytes"] = asizeof.asizeof(database)
-            metrics["clean_runtime"] = datetime.now().timestamp() - start_time
+            metrics["clean_runtime"] = float(datetime.now().timestamp() - start_time)
             metrics["uptime"] = datetime.now().timestamp() - metrics["start_time"].timestamp()
             metrics["metrics_timestamp"] = datetime.now()
 
         logging.debug("Thread Unlocked!")
+    
+        # Export metrics to InfluxDB
+        if config.influxdb_host:
+            write_influx(config, metrics_log_point(metrics))
+
+
+# Format metrics into something InfluxDB can use
+def metrics_log_point(metrics): 
+    try:
+        hostname = socket.gethostname()
+        ipaddress = socket.gethostbyname(hostname)
+    # We dont really care at the moment if this does not return
+    except:
+        hostname = "localhost"
+        ipaddress = "127.0.0.1"
+
+    return [{
+        "measurement": "llama_server",
+        "tags": {
+            "hostname": hostname,
+            "ipaddress": ipaddress
+        },
+        "fields": {
+            "probe_count_removed": int(metrics["probe_count_removed"]),
+            "probe_count_active": int(metrics["probe_count_active"]),
+            "group_count_active": int(metrics["group_count_active"]),
+            "group_count_removed": int(metrics["group_count_removed"]),
+            "database_size_bytes": int(metrics["database_size_bytes"]),
+            "clean_runtime": float(metrics["clean_runtime"]),
+            "uptime": int(metrics["uptime"]),
+        }
+    }]
+
+
+# Function to write server metrics to influxDB
+def write_influx(config, points):
+    # Setup InfluxDB client
+    client = InfluxDBClient(host=config.influxdb_host, port=config.influxdb_port, database=config.influxdb_name, verify_ssl=False)
+
+    # Attempt to write metrics to InfluxDB
+    try:
+        client.write_points(points)
+
+    # Catch errors and log
+    except Exception as e:
+        logging.error("Error writing to InfluxDB - Host: %s, Port: %s, Database: %s" % (config.influxdb_host, config.influxdb_port, config.influxdb_name))
+        logging.error(e)
+
+        # Handle in main if errored
+        return False
+    
+    # Log how many metrics we wrote
+    logging.info("Wrote %i metrics to influxDB" % len(points))
+
+    # Return true if we thing everything worked
+    return True
+
+
+# Create the InfluxDB if one does not already exsist
+def setup_influx(config):
+    # Setup InfluxDB client
+    client = InfluxDBClient(host=config.influxdb_host, port=config.influxdb_port, database=config.influxdb_name, verify_ssl=False)
+
+    # Create database if it does not exsist
+    try:
+        logging.info("Creating influxDB on host '%s:%i' named '%s' if none exsists" % (config.influxdb_host, config.influxdb_port, config.influxdb_name))
+        client.create_database(config.influxdb_name)
+    except Exception as e:
+        logging.error("Error creating InfluxDB Database, please verify one exsists")
+        logging.error(e)
+
+        # Return False if something errored, handle in main if required
+        return False
+
+    return True
 
 
 if __name__ == "__main__":
     # Gather application start time for metrics and data validation
     metrics["start_time"] = datetime.now()
 
-    # Start background threaded process to clean stale probes
+    # Creat influxDB if none exsists and option enabled
+    if config.influxdb_host:
+        setup_influx(config)
+
+    # Start bcakground threaded process to clean stale probes
     inline_thread_cleanup = threading.Thread(target=clean_stale_probes, name="CleanThread")
     inline_thread_cleanup.start()
 
