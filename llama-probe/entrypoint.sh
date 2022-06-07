@@ -8,6 +8,12 @@ if [[ "$MESOS" ]]; then
   export PROBE_SHORTNAME=$HOST
 fi
 
+if [[ "$KUB" ]]; then
+  echo "KUB Option Selected!"
+  export PROBE_NAME=$HOSTNAME
+  export PROBE_SHORTNAME=$RC_HOSTNAME
+fi
+
 # Simple bash script to manage the llama probe
 echo "entrypoint.sh running..."
 server_url="$LLAMA_SERVER/api/v1/config/$LLAMA_GROUP?llamaport=$LLAMA_PORT"
