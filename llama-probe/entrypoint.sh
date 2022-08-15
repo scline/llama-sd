@@ -1,5 +1,5 @@
 #!/bin/bash
-version="1.0.4"
+version="1.1.0"
 
 # Custom environment settings
 if [[ "$MESOS" ]]; then
@@ -120,7 +120,7 @@ fi
   running_config="`md5sum config.yaml | awk '{print $1}'`"
   temp_config="`md5sum config.yaml.tmp | awk '{print $1}'`"
 
-  collector_pid=`ps -A -o pid,cmd | grep collector | grep -v grep | head -n 1 | awk '{print $1}'`
+  collector_pid=`ps -A | grep collector | grep -v grep | head -n 1 | awk '{print $1}'`
 
   # If (running ISNOTEQUALTO temp)
   if [[ "$running_config" != "$temp_config" ]]; then
@@ -132,7 +132,7 @@ fi
       echo "Interval has changed, hard-stopping the Collector"
 
       # Kill -9 the collector since -HUP does not restart with new interval values, then restart
-      kill -9 `ps -A -o pid,cmd | grep collector | grep -v grep | head -n 1 | awk '{print $1}'`
+      kill -9 `ps -A | grep collector | grep -v grep | head -n 1 | awk '{print $1}'`
       #sleep 5
       #collector -llama.config config.yaml &
 
@@ -143,7 +143,7 @@ fi
     fi
     # Send sigup to collector process in order to reload configuration
     # https://github.com/dropbox/llama/blob/master/cmd/collector/main.go#L34
-    kill -HUP `ps -A -o pid,cmd | grep collector | grep -v grep | head -n 1 | awk '{print $1}'` 2>/dev/null
+    kill -HUP `ps -A | grep collector | grep -v grep | head -n 1 | awk '{print $1}'` 2>/dev/null
   fi 
 
   if [ -z "$collector_pid" ]; then

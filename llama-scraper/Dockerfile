@@ -1,11 +1,17 @@
-FROM golang:1.13
+#FROM golang:1.13
+
+FROM alpine:3.16
 
 WORKDIR /go/src/app
 
-copy entrypoint.sh entrypoint.sh 
+COPY bin/ /usr/local/bin/
+COPY entrypoint.sh entrypoint.sh 
 
-RUN go get -d -v github.com/dropbox/llama
-RUN go install -v github.com/dropbox/llama/cmd/scraper
+# Install dependencies for applications to run
+RUN /bin/sh -c "apk add --no-cache gcompat bash curl"
+
+# Install additional network tools in the event troubleshooting is required
+RUN /bin/sh -c "apk add --no-cache traceroute bind-tools mtr"
 
 # environment variables
 ENV \
