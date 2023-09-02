@@ -73,7 +73,7 @@ func main() {
 	envs := initEnvVars()
 	log.Println("Environment Variables Loaded:", envs)
 
-	var registration PayLoad 
+	var registration PayLoad
 
 	// If no port infromation is given, auto set this to 8100
 	if envs["LLAMA_PORT"] == "" {
@@ -100,12 +100,12 @@ func main() {
 
 	// LLAMA Group Settings | OPTIONAL
 	if envs["LLAMA_GROUP"] != "" {
-		registration.Group = envs["LLAMA_GROUP"] 
+		registration.Group = envs["LLAMA_GROUP"]
 	}
 
 	// LLAMA Source IP | OPTIONAL
 	if envs["LLAMA_SOURCE_IP"] != "" {
-		registration.Ip = envs["LLAMA_SOURCE_IP"] 
+		registration.Ip = envs["LLAMA_SOURCE_IP"]
 	}
 
 	// Register tag values

@@ -1,11 +1,15 @@
-import json, flask, socket, threading, logging, configargparse
+import json, flask, threading, logging, configargparse
 
-from flask import request, jsonify, render_template, send_file
+from flask import request, jsonify, render_template
 from flask_expects_json import expects_json
-from influxdb import InfluxDBClient
 from datetime import datetime
 from pympler import asizeof
 from time import sleep
+
+from common.functions import create_date
+from models.flask_schema import registration_schema
+from helpers.influxdb import write_influx, setup_influx, metrics_log_point
+from helpers.probe import is_probe_dup
 
 # Load configuration file and settings
 p = configargparse.ArgParser(default_config_files=['.config.yml', '~/.config.yml'])
@@ -73,27 +77,8 @@ thread_lock = threading.Lock()
 database = {}
 metrics = {}
 
-# Expected JSON schema for registering a probe
-schema = {
-    'type': 'object',
-    'properties': {
-        'port': {'type': 'number'},
-        'keepalive': {'type': 'number', "default": default_keepalive },
-        'group': {'type': 'string', "default": default_group },
-        'tags': {
-            'type': 'object',
-            'properties': {
-                'version': {'type': 'string'},
-                'probe_shortname': {'type': 'string'},
-                'probe_name': {'type': 'string'}
-            },
-            'required': ['version', 'probe_shortname', 'probe_name']
-        },
-    },
-    'required': ['port']
-}
 
-
+# TODO Make the homepage show manual
 @app.route('/', methods=['GET'])
 def home():
     return "<h1>Welcome Home!</h1><p>Generic HomePage</p>"
@@ -122,7 +107,7 @@ def interval():
 
 # Registration endpoint
 @app.route("/api/v1/register", methods=['POST'])
-@expects_json(schema, fill_defaults=True)
+@expects_json(registration_schema, fill_defaults=True)
 def add_entry():
     request_json = request.get_json()
 
@@ -262,28 +247,6 @@ def api_list_group(group):
     return jsonify({'error': "unknown group '%s'" % group}), 404
 
 
-# Grab current date and time, reply in json format
-def create_date():
-    return {'create_date': datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')}
-
-
-# Process that checks if there are duplicate probes in a group
-def is_probe_dup(group, probe):
-    for probe_compaire in database[group]:
-
-        # Ignore self entry
-        if probe == probe_compaire:
-            continue
-
-        # If two different probes habe the same shortname, return True
-        if database[group][probe]["tags"]["probe_shortname"] == database[group][probe_compaire]["tags"]["probe_shortname"]:
-            logging.error("Duplicate probe entry found in Group: '%s', ID: '%s', probe_shortname: '%s'" % (group, probe, database[group][probe]["tags"]["probe_shortname"]))
-            return True
-    
-    # No duplicates found
-    return False
-
-
 # Background process that removes stale entries
 def clean_stale_probes():
     # Run every 60 seconds
@@ -315,7 +278,7 @@ def clean_stale_probes():
                         remove_probe_list.append(probe)
 
                     # If there is a duplicate entry mark for deletetion
-                    if is_probe_dup(group, probe):
+                    if is_probe_dup(group, probe, database):
                         remove_probe_list.append(probe)
             
                 # Remove old probed from global database
@@ -366,77 +329,6 @@ def clean_stale_probes():
         # Export metrics to InfluxDB
         if config.influxdb_host:
             write_influx(config, metrics_log_point(metrics))
-
-
-# Format metrics into something InfluxDB can use
-def metrics_log_point(metrics): 
-    try:
-        hostname = socket.gethostname()
-        ipaddress = socket.gethostbyname(hostname)
-    # We dont really care at the moment if this does not return
-    except:
-        hostname = "localhost"
-        ipaddress = "127.0.0.1"
-
-    return [{
-        "measurement": "llama_server",
-        "tags": {
-            "hostname": hostname,
-            "ipaddress": ipaddress
-        },
-        "fields": {
-            "probe_count_removed": int(metrics["probe_count_removed"]),
-            "probe_count_active": int(metrics["probe_count_active"]),
-            "group_count_active": int(metrics["group_count_active"]),
-            "group_count_removed": int(metrics["group_count_removed"]),
-            "database_size_bytes": int(metrics["database_size_bytes"]),
-            "clean_runtime": float(metrics["clean_runtime"]),
-            "uptime": int(metrics["uptime"]),
-        }
-    }]
-
-
-# Function to write server metrics to influxDB
-def write_influx(config, points):
-    # Setup InfluxDB client
-    client = InfluxDBClient(host=config.influxdb_host, port=config.influxdb_port, database=config.influxdb_name, verify_ssl=False)
-
-    # Attempt to write metrics to InfluxDB
-    try:
-        client.write_points(points)
-
-    # Catch errors and log
-    except Exception as e:
-        logging.error("Error writing to InfluxDB - Host: %s, Port: %s, Database: %s" % (config.influxdb_host, config.influxdb_port, config.influxdb_name))
-        logging.error(e)
-
-        # Handle in main if errored
-        return False
-    
-    # Log how many metrics we wrote
-    logging.info("Wrote %i metrics to influxDB" % len(points))
-
-    # Return true if we thing everything worked
-    return True
-
-
-# Create the InfluxDB if one does not already exsist
-def setup_influx(config):
-    # Setup InfluxDB client
-    client = InfluxDBClient(host=config.influxdb_host, port=config.influxdb_port, database=config.influxdb_name, verify_ssl=False)
-
-    # Create database if it does not exsist
-    try:
-        logging.info("Creating influxDB on host '%s:%i' named '%s' if none exsists" % (config.influxdb_host, config.influxdb_port, config.influxdb_name))
-        client.create_database(config.influxdb_name)
-    except Exception as e:
-        logging.error("Error creating InfluxDB Database, please verify one exsists")
-        logging.error(e)
-
-        # Return False if something errored, handle in main if required
-        return False
-
-    return True
 
 
 if __name__ == "__main__":
