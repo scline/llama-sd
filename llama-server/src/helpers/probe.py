@@ -3,8 +3,9 @@ Contains functions related to llama probes
 '''
 import logging
 
-# Process that checks if there are duplicate probes in a group
+
 def is_probe_dup(group, probe, database) -> bool:
+    ''' Process that checks if there are duplicate probes in a group '''
     for probe_compaire in database[group]:
 
         # Ignore self entry

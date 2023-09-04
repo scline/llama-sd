@@ -9,15 +9,15 @@ from common.constants import default_keepalive, default_group
 registration_schema = {
     'type': 'object',
     'properties': {
-        'port':      {'type': 'number'},
+        'port': {'type': 'number'},
         'keepalive': {'type': 'number', "default": default_keepalive },
-        'group':     {'type': 'string', "default": default_group },
+        'group': {'type': 'string', "default": default_group },
         'tags': {
             'type': 'object',
             'properties': {
-                'version':         {'type': 'string'},
+                'version': {'type': 'string'},
                 'probe_shortname': {'type': 'string'},
-                'probe_name':      {'type': 'string'}
+                'probe_name': {'type': 'string'}
             },
             'required': ['version', 'probe_shortname', 'probe_name']
         },

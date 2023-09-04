@@ -1,6 +1,8 @@
-import json, flask, threading, logging, configargparse
+import json
+import logging
+import threading
 
-from flask import request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template
 from flask_expects_json import expects_json
 from datetime import datetime
 from pympler import asizeof
@@ -10,73 +12,12 @@ from common.functions import create_date
 from models.flask_schema import registration_schema
 from helpers.influxdb import write_influx, setup_influx, metrics_log_point
 from helpers.probe import is_probe_dup
+from helpers.config import load_conf
 
-# Load configuration file and settings
-p = configargparse.ArgParser(default_config_files=['.config.yml', '~/.config.yml'])
-p.add('-c', '--config', required=False, is_config_file=True, help='config file path', env_var='APP_CONFIG')
-p.add('-g', '--group', required=False, help='default group name', env_var='APP_GROUP')
-p.add('-i', '--host', required=False, help='listening web ip', env_var='APP_HOST')
-p.add('-k', '--keepalive', required=False, type=int, help='default keepalive value in seconds', env_var='APP_KEEPALIVE')
-p.add('-p', '--port', required=False, help='listening web port', env_var='APP_PORT')
-p.add('--interval', required=False, type=int, help='llama collection interval in seconds', env_var='LLAMA_INTERVAL')
-p.add('--influxdb-host', required=False, help='InfluxDB Hostname', env_var='INFLUXDB_HOST')
-p.add('--influxdb-port', required=False, type=int, help='InfluxDB Port', env_var='INFLUXDB_PORT')
-p.add('--influxdb-name', required=False, help='InfluxDB Name, defaults to "enphase"', env_var='INFLUXDB_NAME')
-p.add('-v', '--verbose', help='verbose logging', action='store_true', env_var='APP_VERBOSE')
-
-config = p.parse_args()
-
-app = flask.Flask(__name__)
-
-# Set defaults for webserver settings
-if not config.host:
-    config.host = "127.0.0.1"
-if not config.port:
-    config.port = "5000"
-if not config.interval:
-    config.interval = 10
-
-# Set defaults for InfluxDB settings
-if config.influxdb_host:
-    if not config.influxdb_port:
-        config.influxdb_port = 8086
-    if not config.influxdb_name:
-        config.influxdb_name = "llama"
-
-# Set logging levels
-if config.verbose:
-    logging.basicConfig(format="%(asctime)s %(levelname)s %(threadName)s: %(message)s", encoding='utf-8', level=logging.DEBUG)
-else:
-    logging.basicConfig(format="%(asctime)s %(levelname)s %(threadName)s: %(message)s", encoding='utf-8', level=logging.INFO)
-
-# Set keepalive values, 3600 seconds if none is set
-if config.keepalive:
-    # How many seconds before kicking probes from service discovery
-    default_keepalive = config.keepalive
-else:
-    # 86400 seconds = 1 day
-    default_keepalive = 86400
-
-# Set a default registration group if one is not provided
-if config.group:
-    # Load the default group from configuration variables.
-    default_group = str(config.group)
-else:
-    default_group = "none"
-
-# Debug logging for settings
-logging.debug(p.format_values())
-logging.debug(config)
-logging.debug("Default keepalive is set to %i seconds" % default_keepalive)
-logging.debug("Default group is set to '%s'" % default_group)
+app = Flask(__name__)
 
 # Global variable to lock threads as needed
 thread_lock = threading.Lock()
-
-# Initialize global dictionaries
-database = {}
-metrics = {}
-
 
 # TODO Make the homepage show manual
 @app.route('/', methods=['GET'])
@@ -332,6 +273,13 @@ def clean_stale_probes():
 
 
 if __name__ == "__main__":
+    # Initialize dictionaries
+    database = {}
+    metrics = {}
+
+    # Generate configruation
+    config = load_conf()
+
     # Gather application start time for metrics and data validation
     metrics["start_time"] = datetime.now()
 

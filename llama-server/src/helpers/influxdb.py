@@ -6,9 +6,11 @@ import socket
 import logging
 from influxdb import InfluxDBClient
 
+from models.influxdb import InfluxDataPoint
 
-# Function to write server metrics to influxDB
+
 def write_influx(config, points) -> None:
+    ''' Function to write server metrics to influxDB '''
     # Setup InfluxDB client
     client = InfluxDBClient(host=config.influxdb_host,
                             port=config.influxdb_port,
@@ -45,8 +47,8 @@ def setup_influx(config) -> None:
         return
 
 
-# Format metrics into something InfluxDB can use
-def metrics_log_point(metrics):
+def metrics_log_point(metrics) -> InfluxDataPoint:
+    ''' Format metrics into something InfluxDB can use '''
     try:
         hostname = socket.gethostname()
         ipaddress = socket.gethostbyname(hostname)
