@@ -2,16 +2,19 @@
 Contains flask JSON schema for Flask calls.
 '''
 
-# TODO this needs to leave after var refactor
-from common.constants import default_keepalive, default_group
+from helpers.config import load_conf
+
+
+# Load configuration variable for defaults within scema's
+config = load_conf()
 
 # JSON schema for registering a remote llama probe
 registration_schema = {
     'type': 'object',
     'properties': {
         'port': {'type': 'number'},
-        'keepalive': {'type': 'number', "default": default_keepalive },
-        'group': {'type': 'string', "default": default_group },
+        'keepalive': {'type': 'number', "default": config.keepalive },
+        'group': {'type': 'string', "default": config.group },
         'tags': {
             'type': 'object',
             'properties': {

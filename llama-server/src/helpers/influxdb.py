@@ -31,6 +31,7 @@ def write_influx(config, points) -> None:
 
 # Create the InfluxDB if one does not already exsist
 def setup_influx(config) -> None:
+    ''' Setup influxDB database '''
     # Setup InfluxDB client
     client = InfluxDBClient(host=config.influxdb_host,
                             port=config.influxdb_port,
@@ -44,7 +45,6 @@ def setup_influx(config) -> None:
     except Exception as e:
         logging.error("Error creating InfluxDB Database, please verify one exsists")
         logging.error(e)
-        return
 
 
 def metrics_log_point(metrics) -> InfluxDataPoint:

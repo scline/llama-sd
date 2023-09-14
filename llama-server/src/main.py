@@ -197,7 +197,7 @@ def clean_stale_probes():
 
         # Aquire thread lock for variable work
         with thread_lock:
-            logging.debug("Thread Locked!")
+            logging.warning("Thread Locked!")
 
             # Initialize list 
             remove_probe_list = []
@@ -265,7 +265,8 @@ def clean_stale_probes():
             metrics["uptime"] = datetime.now().timestamp() - metrics["start_time"].timestamp()
             metrics["metrics_timestamp"] = datetime.now()
 
-        logging.debug("Thread Unlocked!")
+        logging.warning("Thread Unlocked!")
+        logging.debug(database)
     
         # Export metrics to InfluxDB
         if config.influxdb_host:

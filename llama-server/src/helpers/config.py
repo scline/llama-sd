@@ -5,15 +5,12 @@ Contains configuration options via 'configargparse' library
 import configargparse
 import logging
 
-
-
-def load_conf() -> dict:
+def load_conf():
     ''' Load and injest config or env variables '''
 
     # Load configuration file and settings
-    p = configargparse.ArgParser(default_config_files=['.config.yml', '~/.config.yml'])
+    p = configargparse.ArgParser()
 
-    p.add('-c', '--config', required=False, is_config_file=True, help='config file path', env_var='APP_CONFIG')
     p.add('-g', '--group', required=False, help='default group name', env_var='APP_GROUP')
     p.add('-i', '--host', required=False, help='listening web ip', env_var='APP_HOST')
     p.add('-k', '--keepalive', required=False, type=int, help='default keepalive value in seconds', env_var='APP_KEEPALIVE')
@@ -41,7 +38,7 @@ def load_conf() -> dict:
         if not config.influxdb_name:
             config.influxdb_name = "llama"
 
-    # Set keepalive values, 3600 seconds if none is set
+    # Set keepalive values, 86400 seconds if none is set
     if config.keepalive:
         # How many seconds before kicking probes from service discovery
         default_keepalive = config.keepalive
