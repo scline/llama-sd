@@ -16,6 +16,6 @@ def is_probe_dup(group, probe, database) -> bool:
         if database[group][probe]["tags"]["probe_shortname"] == database[group][probe_compaire]["tags"]["probe_shortname"]:
             logging.error("Duplicate probe entry found in Group: '%s', ID: '%s', probe_shortname: '%s'" % (group, probe, database[group][probe]["tags"]["probe_shortname"]))
             return True
-    
+
     # No duplicates found
     return False

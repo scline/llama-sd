@@ -134,7 +134,7 @@ def api_config(group):
         if not port:
             logging.error("No port was given from probe '%s' when generating configuration" % remote_ip_address) 
             port = "null"
-        
+
         # Store probe ID "IP_ADDRESS:PORT"
         requesting_probe_id = "%s:%s" % (remote_ip_address, port)
         logging.debug("Config request from '%s'" % requesting_probe_id)
@@ -162,12 +162,12 @@ def api_config(group):
             database_tmp[group][remote_id]["tags"]["dst_name"] = database_tmp[group][remote_id]["tags"]["probe_name"]
             database_tmp[group][remote_id]["tags"]["dst_shortname"] = database_tmp[group][remote_id]["tags"]["probe_shortname"]
             database_tmp[group][remote_id]["tags"]["src_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
-            database_tmp[group][remote_id]["tags"]["src_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"] 
+            database_tmp[group][remote_id]["tags"]["src_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"]
             database_tmp[group][remote_id]["tags"]["group"] = group
 
-            # Remove the "probe" name entries, we dont need to send those        
-            #database_tmp[group][remote_id]["tags"].pop("probe_name", None)   
-            #database_tmp[group][remote_id]["tags"].pop("probe_shortname", None)   
+            # Remove the "probe" name entries, we dont need to send those
+            #database_tmp[group][remote_id]["tags"].pop("probe_name", None)
+            #database_tmp[group][remote_id]["tags"].pop("probe_shortname", None)
 
         logging.debug(database_tmp[group])
         return render_template("config.yaml.j2", template_data=database_tmp[group], template_interval=config.interval)
@@ -199,7 +199,7 @@ def clean_stale_probes():
         with thread_lock:
             logging.warning("Thread Locked!")
 
-            # Initialize list 
+            # Initialize list
             remove_probe_list = []
             remove_group_list = []
 
@@ -221,7 +221,7 @@ def clean_stale_probes():
                     # If there is a duplicate entry mark for deletetion
                     if is_probe_dup(group, probe, database):
                         remove_probe_list.append(probe)
-            
+
                 # Remove old probed from global database
                 for item in remove_probe_list:
                     database[group].pop(item, None)
@@ -249,12 +249,12 @@ def clean_stale_probes():
             # Lets collect and crunch some metrics here
             global metrics
 
-            # Calculate the number of active nodes 
+            # Calculate the number of active nodes
             node_count = 0
             for group in database:
                 node_count = node_count + len(database[group])
             logging.info("%i active probe(s) are registered" % node_count)
-            
+
             # Write metrics
             metrics["probe_count_removed"] = remove_probe_count
             metrics["probe_count_active"] = node_count
@@ -267,10 +267,10 @@ def clean_stale_probes():
 
         logging.warning("Thread Unlocked!")
         logging.debug(database)
-    
+
         # Export metrics to InfluxDB
         if config.influxdb_host:
-            write_influx(config, metrics_log_point(metrics))
+            write_influx(influxdb_client, metrics_log_point(metrics))
 
 
 if __name__ == "__main__":
@@ -284,9 +284,18 @@ if __name__ == "__main__":
     # Gather application start time for metrics and data validation
     metrics["start_time"] = datetime.now()
 
-    # Creat influxDB if none exsists and option enabled
-    if config.influxdb_host:
-        setup_influx(config)
+    for i in range(3):
+        # Creat influxDB if none exsists and option enabled
+        if config.influxdb_host:
+            logging.info("Setting up InfluxDB database '%s' on '%s:%s' attempt %i of 3" % (config.influxdb_name, config.influxdb_host, config.influxdb_port, i+1))
+            influxdb_client = setup_influx(config)
+
+        # If client is not None, then database connection has ben created
+        if influxdb_client:
+            break
+
+        # Escalating sleep timer, 5sec -> 10sec -> 15sec
+        sleep((i+1)*5)
 
     # Start bcakground threaded process to clean stale probes
     inline_thread_cleanup = threading.Thread(target=clean_stale_probes, name="CleanThread")

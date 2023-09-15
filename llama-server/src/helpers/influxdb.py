@@ -9,42 +9,39 @@ from influxdb import InfluxDBClient
 from models.influxdb import InfluxDataPoint
 
 
-def write_influx(config, points) -> None:
+def write_influx(client: InfluxDBClient, points) -> None:
     ''' Function to write server metrics to influxDB '''
-    # Setup InfluxDB client
-    client = InfluxDBClient(host=config.influxdb_host,
-                            port=config.influxdb_port,
-                            database=config.influxdb_name,
-                            verify_ssl=False)
 
     # Attempt to write metrics to InfluxDB
     try:
         client.write_points(points)
     except Exception as e:
-        logging.error("Error writing to InfluxDB - Host: %s, Port: %s, Database: %s" % (config.influxdb_host, config.influxdb_port, config.influxdb_name))
+        logging.error("Error writing to InfluxDB")
         logging.error(e)
-        return
-    
+        return None
+
     # Log how many metrics we wrote
     logging.info("Wrote %i metrics to influxDB" % len(points))
 
 
 # Create the InfluxDB if one does not already exsist
-def setup_influx(config) -> None:
+def setup_influx(config) -> InfluxDBClient or None:
     ''' Setup influxDB database '''
     # Setup InfluxDB client
-    client = InfluxDBClient(host=config.influxdb_host,
-                            port=config.influxdb_port,
-                            database=config.influxdb_name,
-                            verify_ssl=False)
+    client = InfluxDBClient(
+        host=config.influxdb_host,
+        port=config.influxdb_port,
+        database=config.influxdb_name,
+        verify_ssl=False)
 
     # Create database if it does not exsist
     try:
-        logging.info("Creating influxDB on host '%s:%i' named '%s' if none exsists" % (config.influxdb_host, config.influxdb_port, config.influxdb_name))
         client.create_database(config.influxdb_name)
+        return client
     except Exception as e:
         logging.error("Error creating InfluxDB Database, please verify one exsists")
         logging.error(e)
+        return None
 
 
 def metrics_log_point(metrics) -> InfluxDataPoint:
