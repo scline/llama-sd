@@ -17,7 +17,7 @@ services:
       - APP_PORT=8080
       - APP_GROUP=none
       - APP_KEEPALIVE=86400
-      - APP_VERBOSE=True
+      #- APP_VERBOSE=True
       - INFLUXDB_HOST=10.1.0.105
       - TZ=America/Los_Angeles
 

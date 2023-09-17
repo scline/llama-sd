@@ -5,6 +5,8 @@ Contains configuration options via 'configargparse' library
 import configargparse
 import logging
 
+from common.constants import ApiDefaults, FlaskDefaults, InfluxdbDefaults
+
 def load_conf():
     ''' Load and injest config or env variables '''
 
@@ -25,33 +27,32 @@ def load_conf():
 
     # Set defaults for webserver settings
     if not config.host:
-        config.host = "127.0.0.1"
+        config.host = FlaskDefaults.host
     if not config.port:
-        config.port = "5000"
+        config.port = FlaskDefaults.port
     if not config.interval:
-        config.interval = 10
+        config.interval = ApiDefaults.interval
 
     # Set defaults for InfluxDB settings
     if config.influxdb_host:
         if not config.influxdb_port:
-            config.influxdb_port = 8086
+            config.influxdb_port = InfluxdbDefaults.port
         if not config.influxdb_name:
-            config.influxdb_name = "llama"
+            config.influxdb_name = InfluxdbDefaults.name
 
     # Set keepalive values, 86400 seconds if none is set
     if config.keepalive:
         # How many seconds before kicking probes from service discovery
         default_keepalive = config.keepalive
     else:
-        # 86400 seconds = 1 day
-        default_keepalive = 86400
+        default_keepalive = ApiDefaults.keepalive
 
     # Set a default registration group if one is not provided
     if config.group:
         # Load the default group from configuration variables.
         default_group = str(config.group)
     else:
-        default_group = "none"
+        default_group = ApiDefaults.group
 
     # Set logging levels
     if config.verbose:

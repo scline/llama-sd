@@ -11,9 +11,7 @@ RUN pip install -r requirements.txt
 COPY src/ .
 
 # environment variables
-ENV \
-    APP_CONFIG="config.yml" \
-    PYTHONUNBUFFERED=0
+ENV PYTHONUNBUFFERED=0
 
 # application spisific environment variables (overwrites config file if used)
 #ENV \
