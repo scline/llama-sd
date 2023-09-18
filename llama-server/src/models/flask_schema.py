@@ -22,8 +22,9 @@ registration_schema = {
                 'probe_shortname': {'type': 'string'},
                 'probe_name': {'type': 'string'}
             },
-            'required': ['version', 'probe_shortname', 'probe_name']
+            'required': ['version', 'probe_shortname', 'probe_name'],
+            'additionalProperties': True
         },
     },
-    'required': ['port']
+    'required': ['port'],
 }

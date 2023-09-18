@@ -1,3 +1,4 @@
+import sys
 import json
 import logging
 import threading
@@ -93,6 +94,10 @@ def api_list_all():
 # A route to return a list of hosts that the scraper will collect from
 @app.route('/api/v1/scraper', methods=['GET'])
 def api_scraper():
+    # Dont reply with data if loadtest is running, bad things will happen
+    if config.loadtest:
+        return "<h1>Loadtest Is Running</h1><p>A loadtest is running, this call is disabled.</p>"
+
     hosts = []
     # Cycle through all groups to formulate a list
     for group in database:
@@ -262,6 +267,7 @@ def clean_stale_probes():
             metrics["group_count_active"] = len(database)
             metrics["group_count_removed"] = len(remove_group_list)
             metrics["database_size_bytes"] = asizeof.asizeof(database)
+            metrics["database_size_bytes_sys"] = sys.getsizeof(database)
             metrics["clean_runtime"] = float(datetime.now().timestamp() - start_time)
             metrics["uptime"] = datetime.now().timestamp() - metrics["start_time"].timestamp()
             metrics["metrics_timestamp"] = datetime.now()
@@ -275,7 +281,7 @@ def clean_stale_probes():
             write_influx(influxdb_client, metrics_log_point(metrics))
 
 
-def loadtest(config, keepalive: int, sleeptimer=0) -> None:
+def loadtest(config, keepalive: int, sleeptimer=0, max_registration=32000) -> None:
     ''' loadtest thread loop '''
 
     logging.info("Loadtest thread started...")
@@ -288,6 +294,10 @@ def loadtest(config, keepalive: int, sleeptimer=0) -> None:
     while(not sleep(sleeptimer)):
         loop_count += 1
         loadtest_register_probe(config, keepalive)
+        # If we set a limited number of registrations
+        if loop_count > max_registration:
+            logging.warning("Max registrations completed, count: '%i'" % loop_count)
+            break
         #logging.debug("LoadTest probe registration count: %i" % loop_count)
 
 
@@ -310,6 +320,7 @@ if __name__ == "__main__":
 
             # If client is not None, then database connection has ben created
             if influxdb_client:
+                logging.info("InfluxDB connection verified!")
                 break
 
             # Escalating sleep timer, 5sec -> 10sec -> 15sec
@@ -321,12 +332,15 @@ if __name__ == "__main__":
 
     # Start loadtesting if option is selected.
     if config.loadtest:
-        inline_loadtest01 = threading.Thread(target=loadtest, args=(config, 6000), name="LoadTestThread01")
+        inline_loadtest01 = threading.Thread(target=loadtest, args=(config, 6000, 0.01, 2000), name="LoadTestThread01")
         inline_loadtest01.start()
-        inline_loadtest02 = threading.Thread(target=loadtest, args=(config, 6000), name="LoadTestThread02")
+        inline_loadtest02 = threading.Thread(target=loadtest, args=(config, 6000, 0.01, 4000), name="LoadTestThread02")
         inline_loadtest02.start()
+        inline_loadtest03= threading.Thread(target=loadtest, args=(config, 84000, 0.05, 84000), name="LoadTestThread03")
+        inline_loadtest03.start()
         inline_loadtest_cleanup= threading.Thread(target=loadtest, args=(config, 1, 1), name="LoadTestThreadCleanup")
         inline_loadtest_cleanup.start()
+
 
     logging.info("Flask server started on '%s:%s'" % (config.host, config.port))
 

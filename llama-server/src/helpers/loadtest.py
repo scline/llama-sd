@@ -10,14 +10,12 @@ import logging
 def generate_random_ip_address() -> str:
     ''' Generates a random IP address '''
 
-    local_random = random.Random()
-    return f"{local_random.randrange(1,255)}.{local_random.randrange(1,255)}.{local_random.randrange(1,255)}.{local_random.randrange(1,255)}"
+    return f"{random.randrange(1,255)}.{random.randrange(1,255)}.{random.randrange(1,255)}.{random.randrange(1,255)}"
 
 
 def random_group() -> str:
     ''' Generates a random group name, this is out of a list of 8 '''
 
-    local_random = random.Random()
     group_list = [
         "LoadTest_01",
         "LoadTest_02",
@@ -28,7 +26,7 @@ def random_group() -> str:
         "LoadTest_07",
         "LoadTest_08",]
     
-    return f"{local_random.choices(group_list)}"
+    return f"{random.choices(group_list)[0]}"
 
 
 def loadtest_register_probe(config, keepalive: int) -> None:
@@ -43,7 +41,8 @@ def loadtest_register_probe(config, keepalive: int) -> None:
         'tags': {
             'version': 'loadtest',
             'probe_shortname': ip,
-            'probe_name': ip
+            'probe_name': ip,
+            generate_random_ip_address(): generate_random_ip_address()
         }
     }
 

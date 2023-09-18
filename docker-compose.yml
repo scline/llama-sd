@@ -17,7 +17,7 @@ services:
     environment:
       - APP_HOST=0.0.0.0
       - APP_PORT=8080
-      #- APP_LOADTEST=True
+      - APP_LOADTEST=True
       #- APP_VERBOSE=True
       - INFLUXDB_HOST=10.1.0.65
       - TZ=America/Los_Angeles
