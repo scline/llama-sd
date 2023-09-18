@@ -13,6 +13,7 @@ from models.flask_schema import registration_schema
 from helpers.influxdb import write_influx, setup_influx, metrics_log_point
 from helpers.probe import is_probe_dup
 from helpers.config import load_conf
+from helpers.loadtest import loadtest_register_probe
 
 app = Flask(__name__)
 
@@ -195,7 +196,7 @@ def clean_stale_probes():
         # Get start time for runtime metrics
         start_time = datetime.now().timestamp()
 
-        # Aquire thread lock for variable work
+        # Aquire thread lock for variable work, stops 'RuntimeError: dictionary changed size during iteration'
         with thread_lock:
             logging.warning("Thread Locked!")
 
@@ -264,6 +265,7 @@ def clean_stale_probes():
             metrics["clean_runtime"] = float(datetime.now().timestamp() - start_time)
             metrics["uptime"] = datetime.now().timestamp() - metrics["start_time"].timestamp()
             metrics["metrics_timestamp"] = datetime.now()
+            metrics['active_threads'] = threading.active_count()
 
         logging.warning("Thread Unlocked!")
         logging.debug(database)
@@ -271,6 +273,22 @@ def clean_stale_probes():
         # Export metrics to InfluxDB
         if config.influxdb_host:
             write_influx(influxdb_client, metrics_log_point(metrics))
+
+
+def loadtest(config, keepalive: int, sleeptimer=0) -> None:
+    ''' loadtest thread loop '''
+
+    logging.info("Loadtest thread started...")
+    loop_count = 0
+
+    # Sleep for 10 seconds so Flask has time to startup
+    sleep(10)
+
+    # Loadtest Loop
+    while(not sleep(sleeptimer)):
+        loop_count += 1
+        loadtest_register_probe(config, keepalive)
+        #logging.debug("LoadTest probe registration count: %i" % loop_count)
 
 
 if __name__ == "__main__":
@@ -284,26 +302,35 @@ if __name__ == "__main__":
     # Gather application start time for metrics and data validation
     metrics["start_time"] = datetime.now()
 
-    for i in range(3):
-        # Creat influxDB if none exsists and option enabled
-        if config.influxdb_host:
+    if config.influxdb_host:
+        for i in range(3):
+            # Creat influxDB if none exsists and option enabled
             logging.info("Setting up InfluxDB database '%s' on '%s:%s' attempt %i of 3" % (config.influxdb_name, config.influxdb_host, config.influxdb_port, i+1))
             influxdb_client = setup_influx(config)
 
-        # If client is not None, then database connection has ben created
-        if influxdb_client:
-            break
+            # If client is not None, then database connection has ben created
+            if influxdb_client:
+                break
 
-        # Escalating sleep timer, 5sec -> 10sec -> 15sec
-        sleep((i+1)*5)
+            # Escalating sleep timer, 5sec -> 10sec -> 15sec
+            sleep((i+1)*5)
 
     # Start bcakground threaded process to clean stale probes
     inline_thread_cleanup = threading.Thread(target=clean_stale_probes, name="CleanThread")
     inline_thread_cleanup.start()
+
+    # Start loadtesting if option is selected.
+    if config.loadtest:
+        inline_loadtest01 = threading.Thread(target=loadtest, args=(config, 6000), name="LoadTestThread01")
+        inline_loadtest01.start()
+        inline_loadtest02 = threading.Thread(target=loadtest, args=(config, 6000), name="LoadTestThread02")
+        inline_loadtest02.start()
+        inline_loadtest_cleanup= threading.Thread(target=loadtest, args=(config, 1, 1), name="LoadTestThreadCleanup")
+        inline_loadtest_cleanup.start()
 
     logging.info("Flask server started on '%s:%s'" % (config.host, config.port))
 
     # Te get flask out of development mode
     # https://stackoverflow.com/questions/51025893/flask-at-first-run-do-not-use-the-development-server-in-a-production-environmen
     from waitress import serve
-    serve(app, host=config.host, port=config.port)
+    serve(app, host=config.host, port=config.port, threads=8)

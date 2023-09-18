@@ -13,10 +13,11 @@ def load_conf():
     # Load configuration file and settings
     p = configargparse.ArgParser()
 
-    p.add('-g', '--group', required=False, help='default group name', env_var='APP_GROUP')
-    p.add('-i', '--host', required=False, help='listening web ip', env_var='APP_HOST')
-    p.add('-k', '--keepalive', required=False, type=int, help='default keepalive value in seconds', env_var='APP_KEEPALIVE')
-    p.add('-p', '--port', required=False, help='listening web port', env_var='APP_PORT')
+    p.add('--loadtest', required=False, action='store_true', help='enable loadtest mode', env_var='APP_LOADTEST')
+    p.add('--group', required=False, help='default group name', env_var='APP_GROUP')
+    p.add('--host', required=False, help='listening web ip', env_var='APP_HOST')
+    p.add('--keepalive', required=False, type=int, help='default keepalive value in seconds', env_var='APP_KEEPALIVE')
+    p.add('--port', required=False, help='listening web port', env_var='APP_PORT')
     p.add('--interval', required=False, type=int, help='llama collection interval in seconds', env_var='LLAMA_INTERVAL')
     p.add('--influxdb-host', required=False, help='InfluxDB Hostname', env_var='INFLUXDB_HOST')
     p.add('--influxdb-port', required=False, type=int, help='InfluxDB Port', env_var='INFLUXDB_PORT')

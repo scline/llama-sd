@@ -12,13 +12,14 @@ services:
     restart: always
     ports:
       - "8080:8080"
+#    volumes:
+#      - ./tmp:/tmp
     environment:
       - APP_HOST=0.0.0.0
       - APP_PORT=8080
-      - APP_GROUP=none
-      - APP_KEEPALIVE=86400
+      #- APP_LOADTEST=True
       #- APP_VERBOSE=True
-      - INFLUXDB_HOST=10.1.0.105
+      - INFLUXDB_HOST=10.1.0.65
       - TZ=America/Los_Angeles
 
 
@@ -30,8 +31,8 @@ services:
     hostname: llama-scraper-dev
     restart: always
     environment:
-      - LLAMA_SERVER=http://10.1.0.105:8080
-      - INFLUXDB_HOST=10.1.0.105
+      - LLAMA_SERVER=http://10.1.0.65:8080
+      - INFLUXDB_HOST=10.1.0.65
       - INFLUXDB_PORT=8086
       - INFLUXDB_DB=llama
     depends_on:
@@ -59,7 +60,7 @@ services:
     hostname: llama-probe-dev
     restart: always
     environment:
-      - LLAMA_SERVER=http://10.1.0.105:8080
+      - LLAMA_SERVER=http://10.1.0.65:8080
       - LLAMA_GROUP=default
       - LLAMA_PORT=8100
       - LLAMA_KEEPALIVE=301
@@ -80,12 +81,12 @@ services:
     hostname: llama-probe-dup-dev
     restart: always
     environment:
-      - LLAMA_SERVER=http://10.1.0.105:8080
+      - LLAMA_SERVER=http://10.1.0.65:8080
       - LLAMA_GROUP=default
       - LLAMA_PORT=8101
       - LLAMA_KEEPALIVE=301
       - PROBE_SHORTNAME=dev1
       - PROBE_NAME=localhost
-      - LLAMA_SOURCE_IP=10.1.0.105
+      - LLAMA_SOURCE_IP=10.1.0.65
     depends_on:
       - "llama-server-dev"

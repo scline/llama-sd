@@ -32,6 +32,7 @@ def setup_influx(config) -> InfluxDBClient or None:
         host=config.influxdb_host,
         port=config.influxdb_port,
         database=config.influxdb_name,
+        timeout=10,
         verify_ssl=False)
 
     # Create database if it does not exsist
