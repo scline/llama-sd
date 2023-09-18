@@ -1,4 +1,8 @@
-import sys
+'''
+Main application entrypoint, Flask server.
+'''
+
+
 import json
 import logging
 import threading
@@ -267,7 +271,6 @@ def clean_stale_probes():
             metrics["group_count_active"] = len(database)
             metrics["group_count_removed"] = len(remove_group_list)
             metrics["database_size_bytes"] = asizeof.asizeof(database)
-            metrics["database_size_bytes_sys"] = sys.getsizeof(database)
             metrics["clean_runtime"] = float(datetime.now().timestamp() - start_time)
             metrics["uptime"] = datetime.now().timestamp() - metrics["start_time"].timestamp()
             metrics["metrics_timestamp"] = datetime.now()
@@ -332,15 +335,15 @@ if __name__ == "__main__":
 
     # Start loadtesting if option is selected.
     if config.loadtest:
-        inline_loadtest01 = threading.Thread(target=loadtest, args=(config, 6000, 0.01, 2000), name="LoadTestThread01")
+        # Aggresivly adds 5k probes
+        inline_loadtest01 = threading.Thread(target=loadtest, args=(config, 6000, 0.01, 5000), name="LoadTestThread01")
         inline_loadtest01.start()
-        inline_loadtest02 = threading.Thread(target=loadtest, args=(config, 6000, 0.01, 4000), name="LoadTestThread02")
-        inline_loadtest02.start()
+        # Slower and long-term probe adds
         inline_loadtest03= threading.Thread(target=loadtest, args=(config, 84000, 0.05, 84000), name="LoadTestThread03")
         inline_loadtest03.start()
+        # Adds a probe we expect to timeout via keepalive, ~50-60min
         inline_loadtest_cleanup= threading.Thread(target=loadtest, args=(config, 1, 1), name="LoadTestThreadCleanup")
         inline_loadtest_cleanup.start()
-
 
     logging.info("Flask server started on '%s:%s'" % (config.host, config.port))
 

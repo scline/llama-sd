@@ -27,4 +27,5 @@ registration_schema = {
         },
     },
     'required': ['port'],
+    'additionalProperties': True
 }
