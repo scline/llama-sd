@@ -1,4 +1,4 @@
-FROM python:3.9
+FROM python:3.11
 
 WORKDIR /app
 
@@ -11,22 +11,13 @@ RUN pip install -r requirements.txt
 COPY src/ .
 
 # environment variables
-ENV \
-    APP_CONFIG="config.yml" \
-    PYTHONUNBUFFERED=0
-
-# application spisific environment variables (overwrites config file if used)
-#ENV \
-#    APP_PORT=80 \
-#    APP_HOST=0.0.0.0 \
-#    APP_VERBOSE=False \
-#    APP_GROUP="none" \
-#    APP_KEEPALIVE=86400 \
-#    LLAMA_INTERVAL=10 \
-#    APP_VERBOSE=True
+ENV PYTHONUNBUFFERED=0
 
 # Expose webport
 EXPOSE 80
 
 # command to run on container start
-CMD [ "python", "./app.py" ]
+CMD [ "python", "./main.py" ]
+
+# for debugging container
+#ENTRYPOINT ["tail", "-f", "/dev/null"]

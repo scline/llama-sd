@@ -1,99 +1,31 @@
-import json, flask, socket, threading, logging, configargparse
+'''
+Main application entrypoint, Flask server.
+'''
 
-from flask import request, jsonify, render_template, send_file
+
+import json
+import logging
+import threading
+
+from flask import Flask, request, jsonify, render_template
 from flask_expects_json import expects_json
-from influxdb import InfluxDBClient
 from datetime import datetime
 from pympler import asizeof
 from time import sleep
 
-# Load configuration file and settings
-p = configargparse.ArgParser(default_config_files=['.config.yml', '~/.config.yml'])
-p.add('-c', '--config', required=False, is_config_file=True, help='config file path', env_var='APP_CONFIG')
-p.add('-g', '--group', required=False, help='default group name', env_var='APP_GROUP')
-p.add('-i', '--host', required=False, help='listening web ip', env_var='APP_HOST')
-p.add('-k', '--keepalive', required=False, type=int, help='default keepalive value in seconds', env_var='APP_KEEPALIVE')
-p.add('-p', '--port', required=False, help='listening web port', env_var='APP_PORT')
-p.add('--interval', required=False, type=int, help='llama collection interval in seconds', env_var='LLAMA_INTERVAL')
-p.add('--influxdb-host', required=False, help='InfluxDB Hostname', env_var='INFLUXDB_HOST')
-p.add('--influxdb-port', required=False, type=int, help='InfluxDB Port', env_var='INFLUXDB_PORT')
-p.add('--influxdb-name', required=False, help='InfluxDB Name, defaults to "enphase"', env_var='INFLUXDB_NAME')
-p.add('-v', '--verbose', help='verbose logging', action='store_true', env_var='APP_VERBOSE')
+from common.functions import create_date
+from models.flask_schema import registration_schema
+from helpers.influxdb import write_influx, setup_influx, metrics_log_point
+from helpers.probe import is_probe_dup
+from helpers.config import load_conf
+from helpers.loadtest import loadtest_register_probe
 
-config = p.parse_args()
-
-app = flask.Flask(__name__)
-
-# Set defaults for webserver settings
-if not config.host:
-    config.host = "127.0.0.1"
-if not config.port:
-    config.port = "5000"
-if not config.interval:
-    config.interval = 10
-
-# Set defaults for InfluxDB settings
-if config.influxdb_host:
-    if not config.influxdb_port:
-        config.influxdb_port = 8086
-    if not config.influxdb_name:
-        config.influxdb_name = "llama"
-
-# Set logging levels
-if config.verbose:
-    logging.basicConfig(format="%(asctime)s %(levelname)s %(threadName)s: %(message)s", encoding='utf-8', level=logging.DEBUG)
-else:
-    logging.basicConfig(format="%(asctime)s %(levelname)s %(threadName)s: %(message)s", encoding='utf-8', level=logging.INFO)
-
-# Set keepalive values, 3600 seconds if none is set
-if config.keepalive:
-    # How many seconds before kicking probes from service discovery
-    default_keepalive = config.keepalive
-else:
-    # 86400 seconds = 1 day
-    default_keepalive = 86400
-
-# Set a default registration group if one is not provided
-if config.group:
-    # Load the default group from configuration variables.
-    default_group = str(config.group)
-else:
-    default_group = "none"
-
-# Debug logging for settings
-logging.debug(p.format_values())
-logging.debug(config)
-logging.debug("Default keepalive is set to %i seconds" % default_keepalive)
-logging.debug("Default group is set to '%s'" % default_group)
+app = Flask(__name__)
 
 # Global variable to lock threads as needed
 thread_lock = threading.Lock()
 
-# Initialize global dictionaries
-database = {}
-metrics = {}
-
-# Expected JSON schema for registering a probe
-schema = {
-    'type': 'object',
-    'properties': {
-        'port': {'type': 'number'},
-        'keepalive': {'type': 'number', "default": default_keepalive },
-        'group': {'type': 'string', "default": default_group },
-        'tags': {
-            'type': 'object',
-            'properties': {
-                'version': {'type': 'string'},
-                'probe_shortname': {'type': 'string'},
-                'probe_name': {'type': 'string'}
-            },
-            'required': ['version', 'probe_shortname', 'probe_name']
-        },
-    },
-    'required': ['port']
-}
-
-
+# TODO Make the homepage show manual
 @app.route('/', methods=['GET'])
 def home():
     return "<h1>Welcome Home!</h1><p>Generic HomePage</p>"
@@ -122,7 +54,7 @@ def interval():
 
 # Registration endpoint
 @app.route("/api/v1/register", methods=['POST'])
-@expects_json(schema, fill_defaults=True)
+@expects_json(registration_schema, fill_defaults=True)
 def add_entry():
     request_json = request.get_json()
 
@@ -166,6 +98,10 @@ def api_list_all():
 # A route to return a list of hosts that the scraper will collect from
 @app.route('/api/v1/scraper', methods=['GET'])
 def api_scraper():
+    # Dont reply with data if loadtest is running, bad things will happen
+    if config.loadtest:
+        return "<h1>Loadtest Is Running</h1><p>A loadtest is running, this call is disabled.</p>"
+
     hosts = []
     # Cycle through all groups to formulate a list
     for group in database:
@@ -208,7 +144,7 @@ def api_config(group):
         if not port:
             logging.error("No port was given from probe '%s' when generating configuration" % remote_ip_address) 
             port = "null"
-        
+
         # Store probe ID "IP_ADDRESS:PORT"
         requesting_probe_id = "%s:%s" % (remote_ip_address, port)
         logging.debug("Config request from '%s'" % requesting_probe_id)
@@ -236,12 +172,12 @@ def api_config(group):
             database_tmp[group][remote_id]["tags"]["dst_name"] = database_tmp[group][remote_id]["tags"]["probe_name"]
             database_tmp[group][remote_id]["tags"]["dst_shortname"] = database_tmp[group][remote_id]["tags"]["probe_shortname"]
             database_tmp[group][remote_id]["tags"]["src_name"] = database_tmp[group][requesting_probe_id]["tags"]["probe_name"]
-            database_tmp[group][remote_id]["tags"]["src_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"] 
+            database_tmp[group][remote_id]["tags"]["src_shortname"] = database_tmp[group][requesting_probe_id]["tags"]["probe_shortname"]
             database_tmp[group][remote_id]["tags"]["group"] = group
 
-            # Remove the "probe" name entries, we dont need to send those        
-            #database_tmp[group][remote_id]["tags"].pop("probe_name", None)   
-            #database_tmp[group][remote_id]["tags"].pop("probe_shortname", None)   
+            # Remove the "probe" name entries, we dont need to send those
+            #database_tmp[group][remote_id]["tags"].pop("probe_name", None)
+            #database_tmp[group][remote_id]["tags"].pop("probe_shortname", None)
 
         logging.debug(database_tmp[group])
         return render_template("config.yaml.j2", template_data=database_tmp[group], template_interval=config.interval)
@@ -262,28 +198,6 @@ def api_list_group(group):
     return jsonify({'error': "unknown group '%s'" % group}), 404
 
 
-# Grab current date and time, reply in json format
-def create_date():
-    return {'create_date': datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')}
-
-
-# Process that checks if there are duplicate probes in a group
-def is_probe_dup(group, probe):
-    for probe_compaire in database[group]:
-
-        # Ignore self entry
-        if probe == probe_compaire:
-            continue
-
-        # If two different probes habe the same shortname, return True
-        if database[group][probe]["tags"]["probe_shortname"] == database[group][probe_compaire]["tags"]["probe_shortname"]:
-            logging.error("Duplicate probe entry found in Group: '%s', ID: '%s', probe_shortname: '%s'" % (group, probe, database[group][probe]["tags"]["probe_shortname"]))
-            return True
-    
-    # No duplicates found
-    return False
-
-
 # Background process that removes stale entries
 def clean_stale_probes():
     # Run every 60 seconds
@@ -291,11 +205,11 @@ def clean_stale_probes():
         # Get start time for runtime metrics
         start_time = datetime.now().timestamp()
 
-        # Aquire thread lock for variable work
+        # Aquire thread lock for variable work, stops 'RuntimeError: dictionary changed size during iteration'
         with thread_lock:
-            logging.debug("Thread Locked!")
+            logging.warning("Thread Locked!")
 
-            # Initialize list 
+            # Initialize list
             remove_probe_list = []
             remove_group_list = []
 
@@ -315,9 +229,9 @@ def clean_stale_probes():
                         remove_probe_list.append(probe)
 
                     # If there is a duplicate entry mark for deletetion
-                    if is_probe_dup(group, probe):
+                    if is_probe_dup(group, probe, database):
                         remove_probe_list.append(probe)
-            
+
                 # Remove old probed from global database
                 for item in remove_probe_list:
                     database[group].pop(item, None)
@@ -345,12 +259,12 @@ def clean_stale_probes():
             # Lets collect and crunch some metrics here
             global metrics
 
-            # Calculate the number of active nodes 
+            # Calculate the number of active nodes
             node_count = 0
             for group in database:
                 node_count = node_count + len(database[group])
             logging.info("%i active probe(s) are registered" % node_count)
-            
+
             # Write metrics
             metrics["probe_count_removed"] = remove_probe_count
             metrics["probe_count_active"] = node_count
@@ -360,100 +274,80 @@ def clean_stale_probes():
             metrics["clean_runtime"] = float(datetime.now().timestamp() - start_time)
             metrics["uptime"] = datetime.now().timestamp() - metrics["start_time"].timestamp()
             metrics["metrics_timestamp"] = datetime.now()
+            metrics['active_threads'] = threading.active_count()
 
-        logging.debug("Thread Unlocked!")
-    
+        logging.warning("Thread Unlocked!")
+        logging.debug(database)
+
         # Export metrics to InfluxDB
         if config.influxdb_host:
-            write_influx(config, metrics_log_point(metrics))
+            write_influx(influxdb_client, metrics_log_point(metrics))
 
 
-# Format metrics into something InfluxDB can use
-def metrics_log_point(metrics): 
-    try:
-        hostname = socket.gethostname()
-        ipaddress = socket.gethostbyname(hostname)
-    # We dont really care at the moment if this does not return
-    except:
-        hostname = "localhost"
-        ipaddress = "127.0.0.1"
+def loadtest(config, keepalive: int, sleeptimer=0, max_registration=32000) -> None:
+    ''' loadtest thread loop '''
 
-    return [{
-        "measurement": "llama_server",
-        "tags": {
-            "hostname": hostname,
-            "ipaddress": ipaddress
-        },
-        "fields": {
-            "probe_count_removed": int(metrics["probe_count_removed"]),
-            "probe_count_active": int(metrics["probe_count_active"]),
-            "group_count_active": int(metrics["group_count_active"]),
-            "group_count_removed": int(metrics["group_count_removed"]),
-            "database_size_bytes": int(metrics["database_size_bytes"]),
-            "clean_runtime": float(metrics["clean_runtime"]),
-            "uptime": int(metrics["uptime"]),
-        }
-    }]
+    logging.info("Loadtest thread started...")
+    loop_count = 0
 
+    # Sleep for 10 seconds so Flask has time to startup
+    sleep(10)
 
-# Function to write server metrics to influxDB
-def write_influx(config, points):
-    # Setup InfluxDB client
-    client = InfluxDBClient(host=config.influxdb_host, port=config.influxdb_port, database=config.influxdb_name, verify_ssl=False)
-
-    # Attempt to write metrics to InfluxDB
-    try:
-        client.write_points(points)
-
-    # Catch errors and log
-    except Exception as e:
-        logging.error("Error writing to InfluxDB - Host: %s, Port: %s, Database: %s" % (config.influxdb_host, config.influxdb_port, config.influxdb_name))
-        logging.error(e)
-
-        # Handle in main if errored
-        return False
-    
-    # Log how many metrics we wrote
-    logging.info("Wrote %i metrics to influxDB" % len(points))
-
-    # Return true if we thing everything worked
-    return True
-
-
-# Create the InfluxDB if one does not already exsist
-def setup_influx(config):
-    # Setup InfluxDB client
-    client = InfluxDBClient(host=config.influxdb_host, port=config.influxdb_port, database=config.influxdb_name, verify_ssl=False)
-
-    # Create database if it does not exsist
-    try:
-        logging.info("Creating influxDB on host '%s:%i' named '%s' if none exsists" % (config.influxdb_host, config.influxdb_port, config.influxdb_name))
-        client.create_database(config.influxdb_name)
-    except Exception as e:
-        logging.error("Error creating InfluxDB Database, please verify one exsists")
-        logging.error(e)
-
-        # Return False if something errored, handle in main if required
-        return False
-
-    return True
+    # Loadtest Loop
+    while(not sleep(sleeptimer)):
+        loop_count += 1
+        loadtest_register_probe(config, keepalive)
+        # If we set a limited number of registrations
+        if loop_count > max_registration:
+            logging.warning("Max registrations completed, count: '%i'" % loop_count)
+            break
+        #logging.debug("LoadTest probe registration count: %i" % loop_count)
 
 
 if __name__ == "__main__":
+    # Initialize dictionaries
+    database = {}
+    metrics = {}
+
+    # Generate configruation
+    config = load_conf()
+
     # Gather application start time for metrics and data validation
     metrics["start_time"] = datetime.now()
 
-    # Creat influxDB if none exsists and option enabled
     if config.influxdb_host:
-        setup_influx(config)
+        for i in range(3):
+            # Creat influxDB if none exsists and option enabled
+            logging.info("Setting up InfluxDB database '%s' on '%s:%s' attempt %i of 3" % (config.influxdb_name, config.influxdb_host, config.influxdb_port, i+1))
+            influxdb_client = setup_influx(config)
+
+            # If client is not None, then database connection has ben created
+            if influxdb_client:
+                logging.info("InfluxDB connection verified!")
+                break
+
+            # Escalating sleep timer, 5sec -> 10sec -> 15sec
+            sleep((i+1)*5)
 
     # Start bcakground threaded process to clean stale probes
     inline_thread_cleanup = threading.Thread(target=clean_stale_probes, name="CleanThread")
     inline_thread_cleanup.start()
+
+    # Start loadtesting if option is selected.
+    if config.loadtest:
+        # Aggresivly adds 5k probes
+        inline_loadtest01 = threading.Thread(target=loadtest, args=(config, 6000, 0.01, 5000), name="LoadTestThread01")
+        inline_loadtest01.start()
+        # Slower and long-term probe adds
+        inline_loadtest03= threading.Thread(target=loadtest, args=(config, 84000, 0.05, 84000), name="LoadTestThread03")
+        inline_loadtest03.start()
+        # Adds a probe we expect to timeout via keepalive, ~50-60min
+        inline_loadtest_cleanup= threading.Thread(target=loadtest, args=(config, 1, 1), name="LoadTestThreadCleanup")
+        inline_loadtest_cleanup.start()
 
     logging.info("Flask server started on '%s:%s'" % (config.host, config.port))
 
     # Te get flask out of development mode
     # https://stackoverflow.com/questions/51025893/flask-at-first-run-do-not-use-the-development-server-in-a-production-environmen
     from waitress import serve
-    serve(app, host=config.host, port=config.port)
+    serve(app, host=config.host, port=config.port, threads=8)
